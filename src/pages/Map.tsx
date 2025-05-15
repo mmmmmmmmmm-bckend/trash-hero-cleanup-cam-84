@@ -125,7 +125,7 @@ const Map = () => {
       id: 8,
       name: 'Compost Bin',
       type: 'bin',
-      distance: '300m away',
+4 distance: '300m away',
       location: 'Aswan Riverfront',
       coordinates: [32.8752, 24.0889]
     },
@@ -746,7 +746,7 @@ const Map = () => {
       </main>
       
       {/* Add CSS for animations */}
-      <style jsx global>
+      <style>
         {`
           @keyframes pulse {
             0% {
