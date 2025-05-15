@@ -66,9 +66,13 @@ const AccountSection = () => {
 
     setIsLoading(true);
     try {
+      // Get current user's email
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData?.user?.email || '';
+
       // First sign in with current password to verify it
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: supabase.auth.getUser().then(({ data }) => data.user?.email || ''),
+        email: userEmail,
         password: formData.currentPassword
       });
 

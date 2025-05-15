@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Globe, Trash, User, MapPin, Search, Filter, Plus, AlertCircle } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
@@ -18,6 +17,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from '@/contexts/AuthContext';
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoidHJhc2hoZXJvYXBwIiwiYSI6ImNscmExMndvMTBhYjQyanA1ZXBjYjRyd3MifQ.aR1T6g2GolBsoEKQZb76iQ";
+
+// Define location type interface
+interface Location {
+  id: number;
+  name: string;
+  type: string;
+  distance?: string;
+  distanceValue?: number;
+  location: string;
+  coordinates: number[];
+  description?: string;
+  date?: string;
+}
 
 const Map = () => {
   const { toast } = useToast();
@@ -40,7 +52,7 @@ const Map = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   
   // Egyptian locations data (we'll filter these based on user location later)
-  const egyptLocations = [
+  const egyptLocations: Location[] = [
     {
       id: 1,
       name: 'Recycling Bin',
@@ -462,7 +474,7 @@ const Map = () => {
     }
   };
   
-  const filteredLocations = (type) => {
+  const filteredLocations = (type: string): Location[] => {
     let filtered = egyptLocations;
     
     // Apply search filter if exists
@@ -493,7 +505,11 @@ const Map = () => {
       });
       
       // Sort by distance
-      filtered.sort((a, b) => (a.distanceValue || 0) - (b.distanceValue || 0));
+      filtered.sort((a, b) => {
+        const aValue = a.distanceValue ?? Number.MAX_VALUE;
+        const bValue = b.distanceValue ?? Number.MAX_VALUE;
+        return aValue - bValue;
+      });
     }
     
     return filtered;
@@ -737,7 +753,7 @@ const Map = () => {
       </main>
       
       {/* Add CSS for the user location marker pulse animation */}
-      <style jsx global>{`
+      <style>{`
         .pulse-animation {
           animation: pulse 2s infinite;
         }

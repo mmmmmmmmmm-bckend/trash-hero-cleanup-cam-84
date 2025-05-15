@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Star, Gift, Award, ArrowRight, Clock } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -102,7 +101,7 @@ const Points = () => {
           amount: -200,
           description: 'Redeemed: Reusable Water Bottle',
           date: '2 weeks ago',
-          timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000 // 2 weeks ago
+          timestamp: Date.now() - (14 * 24 * 60 * 60 * 1000) // 2 weeks ago
         }
       ];
       
@@ -120,7 +119,7 @@ const Points = () => {
   
   // Helper function to format time since a date
   const formatTimeSince = (date) => {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     
     let interval = seconds / 31536000; // years
     if (interval > 1) return Math.floor(interval) + ' years ago';
