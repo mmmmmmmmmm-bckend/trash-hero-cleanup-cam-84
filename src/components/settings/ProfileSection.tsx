@@ -151,12 +151,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
               onChange={e => setEditedProfile({...editedProfile, phone_number: e.target.value})}
             />
           </div>
-          <div>
-            <AvatarSelector 
-              selectedAvatar={selectedAvatar}
-              onSelectAvatar={setSelectedAvatar}
-            />
-          </div>
           <div className="flex gap-2 mt-4">
             <Button 
               variant="outline" 

@@ -2,16 +2,16 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Predefined avatars
+// Predefined avatars with Egyptian themes
 export const avatars = [
   {id: 'avatar1', src: '/placeholder.svg', alt: 'Pyramid avatar', name: 'Pyramid'},
   {id: 'avatar2', src: '/placeholder.svg', alt: 'Sphinx avatar', name: 'Sphinx'},
-  {id: 'avatar3', src: '/placeholder.svg', alt: 'Palm tree avatar', name: 'Palm Tree'},
+  {id: 'avatar3', src: '/placeholder.svg', alt: 'Palm Tree avatar', name: 'Palm Tree'},
   {id: 'avatar4', src: '/placeholder.svg', alt: 'Camel avatar', name: 'Camel'},
   {id: 'avatar5', src: '/placeholder.svg', alt: 'Nile avatar', name: 'Nile'},
   {id: 'avatar6', src: '/placeholder.svg', alt: 'Ankh avatar', name: 'Ankh'},
   {id: 'avatar7', src: '/placeholder.svg', alt: 'Pharaoh avatar', name: 'Pharaoh'},
-  {id: 'avatar8', src: '/placeholder.svg', alt: 'Egyptian cat avatar', name: 'Egyptian Cat'},
+  {id: 'avatar8', src: '/placeholder.svg', alt: 'Egyptian Cat avatar', name: 'Egyptian Cat'},
 ];
 
 interface AvatarSelectorProps {

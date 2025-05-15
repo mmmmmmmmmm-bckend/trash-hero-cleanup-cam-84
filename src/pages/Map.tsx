@@ -120,6 +120,40 @@ const Map = () => {
       location: 'Cairo Waterfront',
       date: '2025-05-20T08:30:00',
       coordinates: [31.2290, 30.0444]
+    },
+    {
+      id: 14,
+      name: 'Great Pyramid Area Cleanup',
+      type: 'event',
+      description: 'Help keep our heritage sites clean',
+      location: 'Giza Pyramid Complex',
+      date: '2025-06-01T09:00:00',
+      coordinates: [31.1342, 29.9792]
+    },
+    {
+      id: 15,
+      name: 'Desert Recycle Bin',
+      type: 'bin',
+      distance: '500m away',
+      location: 'Western Desert Oasis',
+      coordinates: [25.5400, 29.2000]
+    },
+    {
+      id: 16,
+      name: 'Dirty Area',
+      type: 'dirty',
+      description: 'Plastic waste around popular camping spot',
+      location: 'White Desert National Park',
+      coordinates: [27.3667, 28.4000]
+    },
+    {
+      id: 17,
+      name: 'Beach Cleanup Initiative',
+      type: 'event',
+      description: 'Join the Red Sea conservation effort',
+      location: 'Marsa Alam',
+      date: '2025-06-22T08:00:00',
+      coordinates: [34.9000, 25.0667]
     }
   ];
   
@@ -179,16 +213,20 @@ const Map = () => {
           </div>
           
           {/* Map (pyramid image placeholder) */}
-          <div className="rounded-lg overflow-hidden h-60 mb-4 bg-gray-800 flex items-center justify-center">
-            <div className="text-center text-white">
-              <img 
-                src="/placeholder.svg" 
-                alt="Egyptian Map" 
-                className="h-16 w-16 mx-auto mb-2 opacity-50" 
-              />
-              <h3 className="text-lg font-bold">Egypt Cleanup Map</h3>
-              <p className="text-sm">In the full version, you'll see an interactive map of Egypt with bin locations, trash reports, and community cleanup areas.</p>
+          <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
+            <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center flex-col">
+              <h3 className="text-lg font-bold text-white mb-2">Egypt Cleanup Map</h3>
+              <p className="text-sm text-white/90 text-center max-w-xs">
+                In the full version, you'll see an interactive map of Egypt with bin locations, trash reports, and community cleanup areas.
+              </p>
             </div>
+            <div 
+              className="absolute inset-0 bg-cover bg-center z-0"
+              style={{ 
+                backgroundImage: "url(/placeholder.svg)",
+                filter: "brightness(0.7)"
+              }}
+            ></div>
           </div>
           
           {/* Content for each tab */}
