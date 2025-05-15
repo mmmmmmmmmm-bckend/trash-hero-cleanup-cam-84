@@ -1,9 +1,5 @@
 
 import * as React from "react";
-import {
-  useToast as useToastPrimitive,
-  toast as toastPrimitive,
-} from "@radix-ui/react-toast";
 import { type ToastActionElement, type ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 5;

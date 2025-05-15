@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cleanups: {
+        Row: {
+          created_at: string | null
+          id: string
+          location: string
+          points: number | null
+          trash_weight_kg: number | null
+          updated_at: string | null
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          location: string
+          points?: number | null
+          trash_weight_kg?: number | null
+          updated_at?: string | null
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          location?: string
+          points?: number | null
+          trash_weight_kg?: number | null
+          updated_at?: string | null
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -16,6 +49,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone_number: string | null
+          total_points: number | null
           updated_at: string
           username: string | null
         }
@@ -25,6 +59,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone_number?: string | null
+          total_points?: number | null
           updated_at?: string
           username?: string | null
         }
@@ -34,6 +69,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone_number?: string | null
+          total_points?: number | null
           updated_at?: string
           username?: string | null
         }

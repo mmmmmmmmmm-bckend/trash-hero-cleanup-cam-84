@@ -45,7 +45,7 @@ const CleanupCamera = () => {
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment' },
-        audio: false // Don't request audio permission
+        audio: false // Don't request audio permission until recording starts
       });
       
       streamRef.current = stream;
