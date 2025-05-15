@@ -20,7 +20,14 @@ import Signup from "./pages/Signup";
 import AllBadges from "./pages/AllBadges";
 import AllRewards from "./pages/AllRewards";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

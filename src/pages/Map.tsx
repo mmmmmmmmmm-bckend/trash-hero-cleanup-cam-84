@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,10 +13,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
-import EzzatTutorial from '@/components/EzzatTutorial';
 
 // Google Maps API Key
 const GOOGLE_MAPS_API_KEY = "AIzaSyDqrk3vgqzwRJZ6LMg9wNECzaeVaIvmOa4";
+
+// Define libraries for Google Maps
+const libraries = ['places'];
 
 // Define location type interface
 interface Location {
@@ -45,7 +46,6 @@ const Map = () => {
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
   const [addingBin, setAddingBin] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [newBin, setNewBin] = useState({
     name: '',
     type: 'General Bin',
@@ -61,7 +61,7 @@ const Map = () => {
   // Setup Google Maps with libraries prop correctly formatted
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ["places"]
+    libraries: libraries as any
   });
   
   // Egyptian locations data (we'll filter these based on user location later)
@@ -207,14 +207,6 @@ const Map = () => {
       coordinates: [34.9000, 25.0667]
     }
   ]);
-
-  // Check if first visit to show tutorial
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('hasSeenMapTutorial');
-    if (!hasSeenTutorial) {
-      setShowTutorial(true);
-    }
-  }, []);
 
   // Request location permission
   useEffect(() => {
@@ -421,12 +413,6 @@ const Map = () => {
     }
   };
 
-  // Hide the tutorial and save this preference
-  const handleCloseTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem('hasSeenMapTutorial', 'true');
-  };
-
   // Check if map is ready
   if (loadError) {
     return (
@@ -443,12 +429,6 @@ const Map = () => {
   return (
     <div className="min-h-screen pb-16 bg-background dark:bg-gray-900">
       <Header title="Community Map" showBack={true} />
-      
-      {/* Show Ezzat Tutorial if it's the first visit */}
-      <EzzatTutorial 
-        isOpen={showTutorial} 
-        onClose={handleCloseTutorial}
-      />
       
       <main className="px-4">
         {/* Location permission banner */}
@@ -487,7 +467,7 @@ const Map = () => {
             variant="ghost" 
             size="sm" 
             className="flex items-center gap-1 text-primary"
-            onClick={() => setShowTutorial(true)}
+            onClick={() => navigate("/")}
           >
             <HelpCircle className="h-4 w-4" />
             Help
@@ -499,8 +479,8 @@ const Map = () => {
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="bins" className="text-xs">Trash Bins</TabsTrigger>
             <TabsTrigger value="dirty" className="text-xs">Dirty Areas</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs">Trash Reports</TabsTrigger>
-            <TabsTrigger value="events" className="text-xs">Events</TabsTrigger>
+            <TabsTrigger value="report" className="text-xs">Trash Reports</TabsTrigger>
+            <TabsTrigger value="event" className="text-xs">Events</TabsTrigger>
           </TabsList>
 
           <div className="flex justify-between mb-4">
@@ -693,7 +673,7 @@ const Map = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="reports" className="mt-0">
+          <TabsContent value="report" className="mt-0">
             <h2 className="text-lg font-bold mb-2">Trash Reports</h2>
             <div className="space-y-2">
               {filteredLocations('report').map(report => (
@@ -712,7 +692,7 @@ const Map = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="events" className="mt-0">
+          <TabsContent value="event" className="mt-0">
             <h2 className="text-lg font-bold mb-2">Cleanup Events</h2>
             <div className="space-y-2">
               {filteredLocations('event').map(event => (

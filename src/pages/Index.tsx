@@ -11,6 +11,8 @@ import PointsBadge from '../components/PointsBadge';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { avatars } from '@/components/AvatarSelector';
+import { Button } from "@/components/ui/button";
+import AppTutorial from '@/components/AppTutorial';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ const Index = () => {
   const [userPoints, setUserPoints] = useState(0);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [topLeaders, setTopLeaders] = useState([]);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [userStats, setUserStats] = useState({
     cleanups: 0,
     collected: 0,
@@ -31,7 +34,19 @@ const Index = () => {
       fetchUserData();
       fetchLeaderboard();
     }
+    
+    // Check if first visit to show tutorial
+    const hasSeenTutorial = localStorage.getItem('hasSeenAppTutorial');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
   }, [user]);
+
+  // Hide the tutorial and save this preference
+  const handleCloseTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenAppTutorial', 'true');
+  };
 
   const fetchUserData = async () => {
     try {
@@ -167,6 +182,12 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Show App Tutorial */}
+      <AppTutorial 
+        isOpen={showTutorial} 
+        onClose={handleCloseTutorial}
+      />
+
       {/* Main content */}
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
         {loading ? (
@@ -209,6 +230,18 @@ const Index = () => {
                 <Award className="w-6 h-6 mb-1" />
                 <span className="text-sm">Challenges</span>
               </button>
+            </div>
+
+            {/* Help button */}
+            <div className="flex justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setShowTutorial(true)}
+              >
+                Need help? View App Guide
+              </Button>
             </div>
 
             {/* Stats summary */}
