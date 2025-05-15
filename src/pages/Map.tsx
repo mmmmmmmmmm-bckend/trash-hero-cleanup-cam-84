@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const containerStyle = {
 const Map = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Added useNavigate hook
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
