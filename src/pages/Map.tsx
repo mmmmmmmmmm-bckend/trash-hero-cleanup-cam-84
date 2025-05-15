@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle } from 'lucide-react';
+import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import NavBar from '../components/NavBar';
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
+import EzzatTutorial from '@/components/EzzatTutorial';
 
 // Google Maps API Key
 const GOOGLE_MAPS_API_KEY = "AIzaSyDqrk3vgqzwRJZ6LMg9wNECzaeVaIvmOa4";
@@ -43,6 +44,7 @@ const Map = () => {
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
   const [addingBin, setAddingBin] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [newBin, setNewBin] = useState({
     name: '',
     type: 'General Bin',
@@ -55,7 +57,7 @@ const Map = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
   const [zoom, setZoom] = useState(13);
   
-  // Setup Google Maps
+  // Setup Google Maps with libraries prop correctly formatted
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries: ["places"]
@@ -204,6 +206,14 @@ const Map = () => {
       coordinates: [34.9000, 25.0667]
     }
   ]);
+
+  // Check if first visit to show tutorial
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('hasSeenMapTutorial');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, []);
 
   // Request location permission
   useEffect(() => {
@@ -410,6 +420,12 @@ const Map = () => {
     }
   };
 
+  // Hide the tutorial and save this preference
+  const handleCloseTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenMapTutorial', 'true');
+  };
+
   // Check if map is ready
   if (loadError) {
     return (
@@ -426,6 +442,12 @@ const Map = () => {
   return (
     <div className="min-h-screen pb-16 bg-background dark:bg-gray-900">
       <Header title="Community Map" showBack={true} />
+      
+      {/* Show Ezzat Tutorial if it's the first visit */}
+      <EzzatTutorial 
+        isOpen={showTutorial} 
+        onClose={handleCloseTutorial}
+      />
       
       <main className="px-4">
         {/* Location permission banner */}
@@ -455,6 +477,20 @@ const Map = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+        </div>
+        
+        {/* Header with help button */}
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold">Map</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center gap-1 text-primary"
+            onClick={() => setShowTutorial(true)}
+          >
+            <HelpCircle className="h-4 w-4" />
+            Help
+          </Button>
         </div>
         
         {/* Tabs */}
@@ -710,19 +746,21 @@ const Map = () => {
       </main>
       
       {/* Add CSS for animations */}
-      <style>{`
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+      <style jsx global>
+        {`
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
           }
-          70% {
-            box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-          }
-        }
-      `}</style>
+        `}
+      </style>
       
       <NavBar />
     </div>
