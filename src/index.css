@@ -46,42 +46,45 @@
   }
 
   .dark {
-    --background: 100 12% 10%;
-    --foreground: 80 25% 98%;
+    /* Dark teal/green brand color: rgb(65, 119, 113) */
+    /* Very dark green-black background: rgb(5, 31, 32) */
 
-    --card: 100 12% 12%;
+    --background: 178 73% 7%;     /* Dark green-black background */
+    --foreground: 80 25% 98%;     /* Light text for dark mode */
+
+    --card: 178 60% 10%;          /* Slightly lighter than background */
     --card-foreground: 80 25% 98%;
 
-    --popover: 100 12% 12%;
+    --popover: 178 60% 10%;
     --popover-foreground: 80 25% 98%;
 
-    --primary: 122 39% 40%;
+    --primary: 173 30% 36%;       /* Dark teal brand color */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 120 20% 30%;
+    --secondary: 173 25% 25%;     /* Darker teal */
     --secondary-foreground: 80 25% 98%;
 
-    --muted: 100 10% 20%;
-    --muted-foreground: 80 15% 65%;
+    --muted: 178 35% 15%;         /* Muted dark teal */
+    --muted-foreground: 80 15% 80%;
 
-    --accent: 210 80% 40%;
+    --accent: 210 80% 40%;        /* Dark blue accent */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 100 12% 25%;
-    --input: 100 12% 25%;
-    --ring: 122 39% 40%;
+    --border: 178 40% 15%;
+    --input: 178 40% 15%;
+    --ring: 173 30% 36%;
     
-    --sidebar-background: 100 12% 10%;
+    --sidebar-background: 178 73% 7%;
     --sidebar-foreground: 80 25% 98%;
-    --sidebar-primary: 122 39% 40%;
+    --sidebar-primary: 173 30% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 100 10% 20%;
+    --sidebar-accent: 178 35% 15%;
     --sidebar-accent-foreground: 80 25% 98%;
-    --sidebar-border: 100 12% 25%;
-    --sidebar-ring: 122 39% 40%;
+    --sidebar-border: 178 40% 15%;
+    --sidebar-ring: 173 30% 36%;
   }
 }
 
@@ -91,7 +94,7 @@
   }
 
   body {
-    @apply bg-hero-background text-hero-text;
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -114,23 +117,23 @@
 
 @layer components {
   .hero-button {
-    @apply bg-hero-primary hover:bg-hero-secondary text-white font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
+    @apply bg-primary hover:bg-primary/80 text-primary-foreground font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
   }
 
   .hero-button-secondary {
-    @apply bg-hero-accent hover:opacity-80 text-white font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
+    @apply bg-accent hover:opacity-80 text-accent-foreground font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
   }
 
   .hero-button-outline {
-    @apply border-2 border-hero-primary text-hero-primary hover:bg-hero-primary hover:text-white font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-semibold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out;
   }
   
   .hero-card {
-    @apply bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200;
+    @apply bg-card text-card-foreground rounded-2xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200;
   }
 
   .leaf-pattern {
-    background-color: #f9fbf7;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234caf50' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    @apply bg-background;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='currentColor' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 }
