@@ -1,22 +1,27 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Video, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 
 const CleanupCamera = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const [step, setStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [videoData, setVideoData] = useState<string[]>([]);
   const [recordingTime, setRecordingTime] = useState(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isCameraReady, setCameraReady] = useState(false);
   
   const steps = [
     { title: "Show the trash", description: "First, show us the trash you've found" },
@@ -25,7 +30,7 @@ const CleanupCamera = () => {
   ];
 
   // Start the camera on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     startCamera();
     return () => {
       stopCamera();
@@ -34,13 +39,20 @@ const CleanupCamera = () => {
 
   const startCamera = async () => {
     try {
+      if (streamRef.current) {
+        stopCamera(); // Stop any existing streams first
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment' },
-        audio: true
+        audio: false // Don't request audio permission
       });
+      
+      streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        setCameraReady(true);
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -53,25 +65,50 @@ const CleanupCamera = () => {
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      const tracks = stream.getTracks();
+    if (streamRef.current) {
+      const tracks = streamRef.current.getTracks();
       tracks.forEach(track => track.stop());
+      streamRef.current = null;
     }
   };
 
-  const startRecording = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
+  const startRecording = async () => {
+    if (!streamRef.current) {
+      await startCamera();
+    }
+    
+    if (streamRef.current) {
       setIsRecording(true);
-      const stream = videoRef.current.srcObject as MediaStream;
-      const recorder = new MediaRecorder(stream);
+      
+      // If we need audio for recording, request it now
+      let recordingStream: MediaStream;
+      
+      try {
+        // Add audio track only for recording
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const videoTracks = streamRef.current.getVideoTracks();
+        const audioTracks = audioStream.getAudioTracks();
+        
+        recordingStream = new MediaStream([...videoTracks, ...audioTracks]);
+      } catch (err) {
+        // Fall back to video-only if audio permission is denied
+        console.warn("Could not get audio permission, recording without audio", err);
+        recordingStream = streamRef.current;
+      }
+
+      const recorder = new MediaRecorder(recordingStream);
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/mp4' });
         const videoUrl = URL.createObjectURL(blob);
-        setVideoData([...videoData, videoUrl]);
+        setVideoData(prev => [...prev, videoUrl]);
+        
+        // Stop audio tracks if they were added just for recording
+        if (recordingStream !== streamRef.current) {
+          recordingStream.getAudioTracks().forEach(track => track.stop());
+        }
       };
 
       mediaRecorderRef.current = recorder;
@@ -126,13 +163,61 @@ const CleanupCamera = () => {
     }
   };
 
-  const submitCleanup = () => {
-    // Here we would submit the videos for verification
-    // For demo purposes, we'll just show a success message
-    toast({
-      title: "Cleanup Submitted",
-      description: "Your cleanup has been submitted for verification. You'll receive points soon!",
-    });
+  const submitCleanup = async () => {
+    if (!user) {
+      toast({
+        title: "Not logged in",
+        description: "You need to be logged in to submit a cleanup.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      // Upload video/evidence data would go here in a real implementation
+      // For now, just add a cleanup record
+      const { data, error } = await supabase
+        .from('cleanups')
+        .insert([
+          { 
+            user_id: user.id,
+            location: 'Custom location', 
+            points: 25,
+            verified: false,
+            trash_weight_kg: 0.5 // Estimated weight
+          }
+        ]);
+      
+      if (error) throw error;
+      
+      // Update user points
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('id', user.id)
+        .single();
+      
+      if (!profileError && profileData) {
+        const currentPoints = profileData.total_points || 0;
+        await supabase
+          .from('profiles')
+          .update({ total_points: currentPoints + 25 })
+          .eq('id', user.id);
+      }
+      
+      toast({
+        title: "Cleanup Submitted",
+        description: "Your cleanup has been submitted for verification. You'll receive points soon!",
+      });
+    } catch (error: any) {
+      console.error("Error submitting cleanup:", error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "There was an error submitting your cleanup.",
+        variant: "destructive",
+      });
+    }
     
     // Navigate back to home
     navigate('/', { state: { justSubmitted: true } });
@@ -156,9 +241,18 @@ const CleanupCamera = () => {
             ref={videoRef}
             autoPlay 
             playsInline 
-            muted={!isRecording}
+            muted
             className="w-full h-full object-cover"
           />
+          
+          {!isCameraReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+              <div className="text-center text-white">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p>Setting up camera...</p>
+              </div>
+            </div>
+          )}
           
           {/* Recording indicator */}
           {isRecording && (
@@ -181,6 +275,23 @@ const CleanupCamera = () => {
             </div>
           </div>
           
+          {/* Preview of recorded video */}
+          {videoData[step] && !isRecording && (
+            <div className="absolute bottom-28 right-4 w-24 h-32 rounded-lg overflow-hidden border-2 border-white">
+              <video 
+                src={videoData[step]} 
+                className="w-full h-full object-cover" 
+                autoPlay 
+                loop 
+                muted
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+              <div className="absolute bottom-1 right-1">
+                <Check className="w-4 h-4 text-green-500" />
+              </div>
+            </div>
+          )}
+          
           {/* Controls */}
           <div className="absolute bottom-16 left-0 right-0 px-4">
             <div className="flex justify-center items-center gap-4">
@@ -188,6 +299,7 @@ const CleanupCamera = () => {
                 <button 
                   onClick={startRecording}
                   className="bg-red-500 text-white p-4 rounded-full"
+                  disabled={!isCameraReady}
                 >
                   <Video className="w-8 h-8" />
                 </button>
