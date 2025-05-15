@@ -1,11 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { MapPin } from 'lucide-react';
-import { AlertCircle } from 'lucide-react';
 
-// Mapbox token
-const MAPBOX_TOKEN = "pk.eyJ1IjoiZXp6YXQiLCJhIjoiY2x0am9jYWNiMDhseTJrcGR0eDR4OWV5biJ9.F57X2J7v1VYeUSRQH2hEzQ";
+import React from 'react';
+import { Map, AlertCircle, CalendarDays } from 'lucide-react';
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Location {
   id: number;
@@ -35,189 +31,25 @@ interface MapComponentProps {
   };
 }
 
-const MapComponent = ({ 
-  mapCenter, 
-  zoom, 
-  userLocation, 
-  locations,
-  activeTab,
-  selectedLocation,
-  onMarkerClick,
-  onInfoWindowClose,
-  containerStyle 
-}: MapComponentProps) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{ [key: number]: mapboxgl.Marker }>({});
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Initialize map when component mounts
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-    
-    try {
-      // Initialize Mapbox
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-      
-      mapRef.current = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [mapCenter.lng, mapCenter.lat],
-        zoom: zoom
-      });
-
-      // Add navigation controls
-      mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-      // Set up event listeners
-      mapRef.current.on('load', () => {
-        setMapLoaded(true);
-      });
-      
-      mapRef.current.on('error', (e) => {
-        console.error('Map error:', e);
-        setError('Failed to load the map. Please try again later.');
-      });
-    } catch (err) {
-      console.error('Error initializing map:', err);
-      setError('Failed to initialize the map. Please check your internet connection.');
-    }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-    };
-  }, []);
-
-  // Update map center and zoom when props change
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.flyTo({
-        center: [mapCenter.lng, mapCenter.lat],
-        zoom: zoom,
-        essential: true
-      });
-    }
-  }, [mapCenter, zoom]);
-
-  // Add markers when map is loaded or locations change
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
-
-    // Remove existing markers
-    Object.values(markersRef.current).forEach(marker => marker.remove());
-    markersRef.current = {};
-
-    // Filter locations based on activeTab
-    const filteredLocations = locations.filter(loc => 
-      activeTab === 'all' || loc.type === activeTab
-    );
-
-    // Add new markers
-    filteredLocations.forEach(location => {
-      // Create marker element
-      const el = document.createElement('div');
-      el.className = 'marker';
-      
-      // Style based on location type
-      let color = '#4CAF50'; // Green for bins
-      if (location.type === 'dirty') color = '#F44336'; // Red for dirty areas
-      if (location.type === 'report') color = '#FF9800'; // Orange for reports
-      if (location.type === 'event') color = '#2196F3'; // Blue for events
-      
-      el.style.backgroundColor = color;
-      el.style.width = '20px';
-      el.style.height = '20px';
-      el.style.borderRadius = '50%';
-      el.style.cursor = 'pointer';
-      el.style.border = '2px solid white';
-      el.style.boxShadow = '0 0 2px rgba(0,0,0,0.3)';
-      
-      // Create and add marker to map
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([location.coordinates[0], location.coordinates[1]])
-        .addTo(mapRef.current!);
-      
-      // Add click event
-      marker.getElement().addEventListener('click', () => {
-        onMarkerClick(location);
-      });
-      
-      // Store marker reference
-      markersRef.current[location.id] = marker;
-    });
-    
-    // Add user location marker if available
-    if (userLocation) {
-      const el = document.createElement('div');
-      el.className = 'user-marker';
-      el.style.backgroundColor = '#4285F4';
-      el.style.border = '2px solid white';
-      el.style.borderRadius = '50%';
-      el.style.width = '16px';
-      el.style.height = '16px';
-      el.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
-      
-      new mapboxgl.Marker(el)
-        .setLngLat([userLocation.lng, userLocation.lat])
-        .addTo(mapRef.current!);
-    }
-  }, [locations, mapLoaded, activeTab, userLocation]);
-
-  // Handle selected location popup
-  useEffect(() => {
-    // Remove existing popup
-    if (popupRef.current) {
-      popupRef.current.remove();
-      popupRef.current = null;
-    }
-    
-    // Add popup if location is selected
-    if (selectedLocation && mapRef.current && mapLoaded) {
-      popupRef.current = new mapboxgl.Popup({ closeButton: true, closeOnClick: false })
-        .setLngLat([selectedLocation.coordinates[0], selectedLocation.coordinates[1]])
-        .setHTML(`
-          <div class="p-2 max-w-[200px]">
-            <h3 class="font-medium text-sm">${selectedLocation.name}</h3>
-            <p class="text-xs text-gray-600">${selectedLocation.location}</p>
-            ${selectedLocation.description ? `<p class="text-xs mt-1">${selectedLocation.description}</p>` : ''}
-            ${selectedLocation.distance ? `<p class="text-xs text-blue-600 mt-1">${selectedLocation.distance}</p>` : ''}
-          </div>
-        `)
-        .addTo(mapRef.current);
-        
-      popupRef.current.on('close', onInfoWindowClose);
-    }
-  }, [selectedLocation, mapLoaded]);
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
-        <div className="text-center p-4">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-          <p className="text-red-600">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!mapLoaded) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
+const MapComponent = ({ containerStyle }: MapComponentProps) => {
   return (
-    <div 
-      ref={mapContainerRef} 
-      style={containerStyle} 
-      className="relative rounded-lg overflow-hidden"
-    />
+    <div style={containerStyle} className="relative rounded-lg overflow-hidden">
+      <Card className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary/20 border-2 border-dashed">
+        <CardContent className="pt-6 flex flex-col items-center text-center">
+          <div className="rounded-full bg-primary/10 p-3 mb-4">
+            <Map className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Map Coming Soon</h3>
+          <p className="text-muted-foreground mb-4">
+            Our interactive map feature will be available in future updates.
+          </p>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <CalendarDays className="h-4 w-4 mr-1" />
+            <span>Stay tuned for updates</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

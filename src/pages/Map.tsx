@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useJsApiLoader } from '@react-google-maps/api';
+import React, { useState } from 'react';
+import { Trash, User, MapPin, Search, Filter, Plus, Info, HelpCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
@@ -37,11 +34,9 @@ const containerStyle = {
 const Map = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate(); 
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
   const [addingBin, setAddingBin] = useState(false);
   const [newBin, setNewBin] = useState({
@@ -49,17 +44,10 @@ const Map = () => {
     type: 'General Bin',
     location: ''
   });
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
-  const [zoom, setZoom] = useState(13);
   const [showMapTutorial, setShowMapTutorial] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
   
-  // Egyptian locations data (we'll filter these based on user location later)
-  const [locations, setLocations] = useState<Location[]>([
+  // Placeholder locations data
+  const [locations] = useState<Location[]>([
     {
       id: 1,
       name: 'Recycling Bin',
@@ -202,149 +190,13 @@ const Map = () => {
     }
   ]);
 
-  // Request location permission
-  useEffect(() => {
-    requestLocationPermission();
-  }, []);
-
-  // Request location permission
-  const requestLocationPermission = () => {
-    setLocationLoading(true);
-    
-    navigator.geolocation.getCurrentPosition(
-      // Success callback
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-        setLocationPermission('granted');
-        setLocationLoading(false);
-        setMapCenter({ lat: latitude, lng: longitude });
-        
-        // Update distances after getting user location
-        updateDistances(latitude, longitude);
-      },
-      // Error callback
-      (error) => {
-        console.error('Error getting location:', error);
-        setLocationPermission('denied');
-        setLocationLoading(false);
-        
-        toast({
-          title: "Location Access Denied",
-          description: "Please enable location access to see nearby bins and cleanups.",
-          variant: "destructive"
-        });
-      },
-      // Options
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      }
-    );
-  };
-  
-  // Calculate distance between two points in km
-  const calculateDistance = (lon1: number, lat1: number, lon2: number, lat2: number) => {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-  
-  // Format distance
-  const formatDistance = (distance: number) => {
-    if (distance < 1) {
-      return `${Math.round(distance * 1000)}m away`;
-    }
-    return `${distance.toFixed(1)}km away`;
-  };
-  
-  // Update distances when user location changes
-  const updateDistances = (latitude: number, longitude: number) => {
-    const updatedLocations = locations.map(loc => {
-      const distance = calculateDistance(
-        loc.coordinates[0], loc.coordinates[1], 
-        longitude, latitude
-      );
-      
-      return {
-        ...loc,
-        distance: formatDistance(distance),
-        distanceValue: distance
-      };
+  // Simplified empty handler functions
+  const handleAddBin = () => {
+    toast({
+      title: "Feature Coming Soon",
+      description: "Adding bins will be available in future updates",
     });
-    
-    // Sort by distance
-    updatedLocations.sort((a, b) => {
-      const aValue = a.distanceValue ?? Number.MAX_VALUE;
-      const bValue = b.distanceValue ?? Number.MAX_VALUE;
-      return aValue - bValue;
-    });
-    
-    setLocations(updatedLocations);
-  };
-  
-  // Handle adding a new bin
-  const handleAddBin = async () => {
-    if (!newBin.name || !newBin.type || !newBin.location) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!userLocation) {
-      toast({
-        title: "Location needed",
-        description: "Please enable location services to add a bin at your current location",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // In a real app, we would save to Supabase here
-      const newId = locations.length + 1;
-      const newLocation: Location = {
-        id: newId,
-        name: newBin.name,
-        type: 'bin',
-        location: newBin.location,
-        coordinates: [userLocation.lng, userLocation.lat],
-        distance: '0m away',
-        distanceValue: 0
-      };
-      
-      setLocations([newLocation, ...locations]);
-      
-      toast({
-        title: "Bin Added",
-        description: `${newBin.type} has been added to ${newBin.location}`,
-      });
-      
-      setAddingBin(false);
-      setNewBin({
-        name: '',
-        type: 'General Bin',
-        location: ''
-      });
-      
-    } catch (error) {
-      console.error('Error adding bin:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add bin",
-        variant: "destructive"
-      });
-    }
+    setAddingBin(false);
   };
   
   const filteredLocations = (type: string): Location[] => {
@@ -366,59 +218,21 @@ const Map = () => {
     return filtered;
   };
 
-  // Handle marker click
-  const handleMarkerClick = (location: Location) => {
-    setSelectedLocation(location);
+  // Simplified handlers
+  const handleMarkerClick = () => {};
+  const handleInfoWindowClose = () => {};
+  const handleLocationSelect = () => {
+    toast({
+      title: "Feature Coming Soon",
+      description: "Location selection will be available in future updates",
+    });
   };
-
-  // Handle info window close
-  const handleInfoWindowClose = () => {
-    setSelectedLocation(null);
-  };
-
-  // Handle location select from list
-  const handleLocationSelect = (location: Location) => {
-    setSelectedLocation(location);
-    setMapCenter({ lat: location.coordinates[1], lng: location.coordinates[0] });
-    setZoom(15);
-  };
-
-  // Check if map has error and display appropriate message
-  if (mapError) {
-    return (
-      <div className="min-h-screen pb-16 bg-background dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-10 w-10 mx-auto text-red-500 mb-4" />
-          <h2 className="text-xl font-bold mb-2">Error Loading Map</h2>
-          <p className="text-muted-foreground">There was an error loading the map: {mapError}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen pb-16 bg-background dark:bg-gray-900">
       <Header title="Community Map" showBack={true} />
       
       <main className="px-4">
-        {/* Location permission banner */}
-        {locationPermission === 'denied' && (
-          <div className="bg-yellow-100 dark:bg-yellow-900/40 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-200 p-4 mb-4">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p>Location access is disabled. Enable location to see bins near you.</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-              onClick={requestLocationPermission}
-            >
-              Enable Location
-            </Button>
-          </div>
-        )}
-        
         {/* Search input */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -471,7 +285,7 @@ const Map = () => {
               newBin={newBin}
               setNewBin={setNewBin}
               onAddBin={handleAddBin}
-              userLocation={userLocation}
+              userLocation={null}
             />
             
             <Button 
@@ -484,15 +298,15 @@ const Map = () => {
             </Button>
           </div>
           
-          {/* Interactive Map */}
+          {/* Interactive Map replaced with coming soon banner */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
             <MapComponent
-              mapCenter={mapCenter}
-              zoom={zoom}
-              userLocation={userLocation}
+              mapCenter={{ lat: 30.0444, lng: 31.2357 }}
+              zoom={13}
+              userLocation={null}
               locations={locations}
               activeTab={activeTab}
-              selectedLocation={selectedLocation}
+              selectedLocation={null}
               onMarkerClick={handleMarkerClick}
               onInfoWindowClose={handleInfoWindowClose}
               containerStyle={containerStyle}
