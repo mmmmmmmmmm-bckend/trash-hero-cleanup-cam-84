@@ -1,43 +1,36 @@
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate login process
-    setTimeout(() => {
-      // For demo purposes, accept any non-empty values
-      if (email && password) {
-        // Store a fake auth token
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('user', JSON.stringify({ name: 'Alex Johnson', email }));
-        toast({
-          title: "Login successful",
-          description: "Welcome back to TrashHero!",
-        });
-        navigate('/');
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your email and password",
-          variant: "destructive",
-        });
-      }
+    try {
+      await signIn(email, password);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

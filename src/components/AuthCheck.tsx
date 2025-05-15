@@ -1,6 +1,7 @@
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthCheckProps {
   children: React.ReactNode;
@@ -8,16 +9,24 @@ interface AuthCheckProps {
 
 const AuthCheck = ({ children }: AuthCheckProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, loading } = useAuth();
   
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    
-    if (!isLoggedIn) {
-      navigate('/login');
+    if (!loading && !user) {
+      navigate('/login', { state: { from: location.pathname } });
     }
-  }, [navigate]);
+  }, [navigate, user, loading, location]);
 
-  return <>{children}</>;
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  return user ? <>{children}</> : null;
 };
 
 export default AuthCheck;

@@ -9,72 +9,92 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme } = useTheme();
-  const [userInfo, setUserInfo] = useState({
-    name: 'Alex Johnson',
-    username: 'alexcleanup',
-    email: 'alex@example.com',
-    phone: '+1 (555) 123-4567',
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState({
+    username: '',
+    full_name: '',
+    phone_number: '',
+    email: '',
     notifications: true,
     locationSharing: true,
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editedInfo, setEditedInfo] = useState({ ...userInfo });
+  const [editedProfile, setEditedProfile] = useState({ ...profile });
 
-  // Load user data from localStorage
+  // Load user profile from Supabase
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
+    const fetchProfile = async () => {
+      if (!user) return;
+
       try {
-        const parsedUser = JSON.parse(userData);
-        setUserInfo(prev => ({
-          ...prev,
-          name: parsedUser.name || prev.name,
-          username: parsedUser.username || prev.username,
-          email: parsedUser.email || prev.email,
-          phone: parsedUser.phone || prev.phone,
-        }));
-        setEditedInfo(prev => ({
-          ...prev,
-          name: parsedUser.name || prev.name,
-          username: parsedUser.username || prev.username,
-          email: parsedUser.email || prev.email,
-          phone: parsedUser.phone || prev.phone,
-        }));
-      } catch (e) {
-        console.error('Error parsing user data', e);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error);
+          return;
+        }
+
+        if (data) {
+          setProfile({
+            username: data.username || '',
+            full_name: data.full_name || '',
+            phone_number: data.phone_number || '',
+            email: user.email || '',
+            notifications: true,
+            locationSharing: true,
+          });
+          setEditedProfile({
+            username: data.username || '',
+            full_name: data.full_name || '',
+            phone_number: data.phone_number || '',
+            email: user.email || '',
+            notifications: true,
+            locationSharing: true,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
       }
-    }
-  }, []);
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const handleToggleNotifications = () => {
-    setUserInfo(prev => ({
+    setProfile(prev => ({
       ...prev,
       notifications: !prev.notifications
     }));
     
     toast({
-      title: userInfo.notifications ? "Notifications disabled" : "Notifications enabled",
-      description: userInfo.notifications 
+      title: profile.notifications ? "Notifications disabled" : "Notifications enabled",
+      description: profile.notifications 
         ? "You won't receive push notifications from the app" 
         : "You'll now receive push notifications from the app",
     });
   };
 
   const handleToggleLocationSharing = () => {
-    setUserInfo(prev => ({
+    setProfile(prev => ({
       ...prev,
       locationSharing: !prev.locationSharing
     }));
     
     toast({
-      title: userInfo.locationSharing ? "Location sharing disabled" : "Location sharing enabled",
-      description: userInfo.locationSharing 
+      title: profile.locationSharing ? "Location sharing disabled" : "Location sharing enabled",
+      description: profile.locationSharing 
         ? "Your location will no longer be shared with the app" 
         : "Your location will be used to find nearby cleanup opportunities",
     });
@@ -82,40 +102,42 @@ const Settings = () => {
 
   const handleStartEditing = () => {
     setIsEditing(true);
-    setEditedInfo({ ...userInfo });
+    setEditedProfile({ ...profile });
   };
 
-  const handleSaveChanges = () => {
-    setUserInfo(editedInfo);
-    setIsEditing(false);
-    
-    // Update localStorage
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const updatedUserData = { ...userData, ...editedInfo };
-    localStorage.setItem('user', JSON.stringify(updatedUserData));
-    
-    toast({
-      title: "Profile updated",
-      description: "Your profile information has been updated successfully",
-    });
+  const handleSaveChanges = async () => {
+    try {
+      if (!user) return;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: editedProfile.username,
+          full_name: editedProfile.full_name,
+          phone_number: editedProfile.phone_number,
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      setProfile(editedProfile);
+      setIsEditing(false);
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-  };
-
-  const handleSignOut = () => {
-    // Clear authentication data
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('user');
-    
-    toast({
-      title: "Signed out",
-      description: "You have been signed out of your account",
-    });
-    
-    // Redirect to login page
-    navigate('/login');
   };
 
   return (
@@ -134,8 +156,8 @@ const Settings = () => {
               />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{userInfo.name}</h2>
-              <p className="text-muted-foreground text-sm">@{userInfo.username}</p>
+              <h2 className="text-xl font-bold">{profile.full_name}</h2>
+              <p className="text-muted-foreground text-sm">@{profile.username}</p>
             </div>
           </div>
           
@@ -144,31 +166,32 @@ const Settings = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
                 <Input 
-                  value={editedInfo.name} 
-                  onChange={e => setEditedInfo({...editedInfo, name: e.target.value})}
+                  value={editedProfile.full_name} 
+                  onChange={e => setEditedProfile({...editedProfile, full_name: e.target.value})}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Username</label>
                 <Input 
-                  value={editedInfo.username} 
-                  onChange={e => setEditedInfo({...editedInfo, username: e.target.value})}
+                  value={editedProfile.username} 
+                  onChange={e => setEditedProfile({...editedProfile, username: e.target.value})}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Email</label>
                 <Input 
                   type="email"
-                  value={editedInfo.email} 
-                  onChange={e => setEditedInfo({...editedInfo, email: e.target.value})}
+                  value={editedProfile.email} 
+                  disabled
+                  className="bg-gray-100"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Phone</label>
                 <Input 
                   type="tel"
-                  value={editedInfo.phone} 
-                  onChange={e => setEditedInfo({...editedInfo, phone: e.target.value})}
+                  value={editedProfile.phone_number} 
+                  onChange={e => setEditedProfile({...editedProfile, phone_number: e.target.value})}
                 />
               </div>
               <div className="flex gap-2 mt-4">
@@ -191,11 +214,11 @@ const Settings = () => {
             <div className="space-y-2">
               <div className="flex items-center">
                 <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">{userInfo.email}</span>
+                <span className="text-sm">{profile.email}</span>
               </div>
               <div className="flex items-center">
                 <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">{userInfo.phone}</span>
+                <span className="text-sm">{profile.phone_number}</span>
               </div>
               <Button 
                 variant="outline" 
@@ -222,7 +245,7 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground">Receive push notifications</p>
               </div>
               <Switch 
-                checked={userInfo.notifications} 
+                checked={profile.notifications} 
                 onCheckedChange={handleToggleNotifications}
               />
             </div>
@@ -232,7 +255,7 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground">Allow access to your location</p>
               </div>
               <Switch 
-                checked={userInfo.locationSharing} 
+                checked={profile.locationSharing} 
                 onCheckedChange={handleToggleLocationSharing}
               />
             </div>
@@ -282,7 +305,7 @@ const Settings = () => {
         <Button 
           variant="destructive" 
           className="w-full"
-          onClick={handleSignOut}
+          onClick={signOut}
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out

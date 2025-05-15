@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const { signUp, user } = useAuth();
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -23,6 +25,13 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   // Password strength checker
   useEffect(() => {
@@ -73,7 +82,7 @@ const Signup = () => {
     return 'bg-green-500';
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
@@ -96,29 +105,18 @@ const Signup = () => {
 
     setLoading(true);
 
-    // Simulate signup process
-    setTimeout(() => {
-      if (name && email && password && username) {
-        // Store a fake auth token and user info
-        const fullPhone = countryCode + phone;
-        const userData = { name, email, username, phone: fullPhone };
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        toast({
-          title: "Account created",
-          description: "Welcome to TrashHero!",
-        });
-        navigate('/');
-      } else {
-        toast({
-          title: "Signup failed",
-          description: "Please fill all required fields",
-          variant: "destructive",
-        });
-      }
+    try {
+      const fullPhone = countryCode + phone;
+      const userData = {
+        name,
+        username,
+        phone: fullPhone
+      };
+
+      await signUp(email, password, userData);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
