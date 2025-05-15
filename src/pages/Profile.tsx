@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { User, Award, Star, Clock, MapPin, Trash, Check } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -40,8 +41,26 @@ const stats = {
 
 const Profile = () => {
   const [headerCompact, setHeaderCompact] = useState(false);
+  const [userData, setUserData] = useState({
+    name: 'Alex Johnson',
+    username: 'alexcleanup',
+  });
 
   useEffect(() => {
+    // Load user data from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserData({
+          name: parsedUser.name || 'Alex Johnson',
+          username: parsedUser.username || 'alexcleanup',
+        });
+      } catch (e) {
+        console.error('Error parsing user data', e);
+      }
+    }
+    
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       setHeaderCompact(scrollPosition > 120);
@@ -67,8 +86,8 @@ const Profile = () => {
               className="w-full h-full object-cover"
             />
           </div>
-          <h1 className="text-xl font-bold">Alex Johnson</h1>
-          <p className="text-white/80">@alexcleanup</p>
+          <h1 className="text-xl font-bold">{userData.name}</h1>
+          <p className="text-white/80">@{userData.username}</p>
           <div className="flex items-center gap-1 mt-1">
             <PointsBadge points={stats.totalPoints} />
           </div>

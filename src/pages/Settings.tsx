@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { User, Bell, Lock, LogOut, Mail, Moon, Sun, Globe, Shield, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Bell, Lock, LogOut, Mail, Moon, Sun, Globe, Shield, HelpCircle, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Switch } from '@/components/ui/switch';
@@ -10,10 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const Settings = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { theme } = useTheme();
   const [userInfo, setUserInfo] = useState({
     name: 'Alex Johnson',
+    username: 'alexcleanup',
     email: 'alex@example.com',
     phone: '+1 (555) 123-4567',
     notifications: true,
@@ -22,6 +25,32 @@ const Settings = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedInfo, setEditedInfo] = useState({ ...userInfo });
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUserInfo(prev => ({
+          ...prev,
+          name: parsedUser.name || prev.name,
+          username: parsedUser.username || prev.username,
+          email: parsedUser.email || prev.email,
+          phone: parsedUser.phone || prev.phone,
+        }));
+        setEditedInfo(prev => ({
+          ...prev,
+          name: parsedUser.name || prev.name,
+          username: parsedUser.username || prev.username,
+          email: parsedUser.email || prev.email,
+          phone: parsedUser.phone || prev.phone,
+        }));
+      } catch (e) {
+        console.error('Error parsing user data', e);
+      }
+    }
+  }, []);
 
   const handleToggleNotifications = () => {
     setUserInfo(prev => ({
@@ -60,6 +89,11 @@ const Settings = () => {
     setUserInfo(editedInfo);
     setIsEditing(false);
     
+    // Update localStorage
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const updatedUserData = { ...userData, ...editedInfo };
+    localStorage.setItem('user', JSON.stringify(updatedUserData));
+    
     toast({
       title: "Profile updated",
       description: "Your profile information has been updated successfully",
@@ -71,11 +105,17 @@ const Settings = () => {
   };
 
   const handleSignOut = () => {
+    // Clear authentication data
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('user');
+    
     toast({
       title: "Signed out",
       description: "You have been signed out of your account",
     });
-    // In a real app, this would handle the sign out process
+    
+    // Redirect to login page
+    navigate('/login');
   };
 
   return (
@@ -95,7 +135,7 @@ const Settings = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold">{userInfo.name}</h2>
-              <p className="text-muted-foreground text-sm">@alexcleanup</p>
+              <p className="text-muted-foreground text-sm">@{userInfo.username}</p>
             </div>
           </div>
           
@@ -106,6 +146,13 @@ const Settings = () => {
                 <Input 
                   value={editedInfo.name} 
                   onChange={e => setEditedInfo({...editedInfo, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Username</label>
+                <Input 
+                  value={editedInfo.username} 
+                  onChange={e => setEditedInfo({...editedInfo, username: e.target.value})}
                 />
               </div>
               <div>
@@ -147,7 +194,7 @@ const Settings = () => {
                 <span className="text-sm">{userInfo.email}</span>
               </div>
               <div className="flex items-center">
-                <User className="w-4 h-4 mr-2 text-muted-foreground" />
+                <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span className="text-sm">{userInfo.phone}</span>
               </div>
               <Button 
