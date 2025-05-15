@@ -15,38 +15,69 @@ interface LeaderboardCardProps {
   title: string;
   entries?: LeaderboardEntry[];
   limit?: number;
+  localOnly?: boolean;
 }
 
-const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, entries: initialEntries, limit = 10 }) => {
+const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ 
+  title, 
+  entries: initialEntries, 
+  limit = 10, 
+  localOnly = false 
+}) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>(initialEntries || []);
   const [loading, setLoading] = useState(!initialEntries);
 
   useEffect(() => {
+    // Don't fetch if entries are provided
     if (initialEntries) {
-      return; // Don't fetch if entries are provided
+      return;
     }
     
     const fetchLeaderboard = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, total_points')
-          .order('total_points', { ascending: false })
-          .limit(limit);
+          .select('id, username, full_name, avatar_url, total_points')
+          .order('total_points', { ascending: false });
+        
+        if (localOnly) {
+          // In a real app, you would filter by location/area
+          // For now we just limit the number of results
+          query = query.limit(5);
+        } else {
+          query = query.limit(limit);
+        }
+        
+        const { data, error } = await query;
         
         if (error) {
           throw error;
         }
         
         if (data) {
-          const leaderboardData = data.map((user, index) => ({
-            id: user.id,
-            name: user.full_name || user.username || 'Unknown User',
-            avatar: avatars.find(a => a.id === user.avatar_url)?.src || '/placeholder.svg',
-            points: user.total_points || 0,
-            rank: index + 1
-          }));
+          const leaderboardData = data.map((user, index) => {
+            // Find the avatar URL based on the avatar_url ID
+            let avatarSrc;
+            if (user.avatar_url) {
+              const matchedAvatar = avatars.find(a => a.id === user.avatar_url);
+              if (matchedAvatar) {
+                avatarSrc = matchedAvatar.src;
+              } else {
+                avatarSrc = `https://i.pravatar.cc/150?img=${index + 1}`;
+              }
+            } else {
+              avatarSrc = `https://i.pravatar.cc/150?img=${index + 1}`;
+            }
+              
+            return {
+              id: user.id,
+              name: user.full_name || user.username || `User ${index + 1}`,
+              avatar: avatarSrc,
+              points: user.total_points || 0,
+              rank: index + 1
+            };
+          });
           
           setEntries(leaderboardData);
         }
@@ -58,7 +89,7 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, entries: initi
     };
     
     fetchLeaderboard();
-  }, [initialEntries, limit]);
+  }, [initialEntries, limit, localOnly]);
   
   if (loading) {
     return (

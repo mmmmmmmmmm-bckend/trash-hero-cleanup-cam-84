@@ -114,9 +114,9 @@ const Index = () => {
 
   // Get avatar source based on avatar_url
   const getAvatarSrc = () => {
-    if (!userProfile?.avatar_url) return "https://i.pravatar.cc/150?img=5";
+    if (!userProfile?.avatar_url) return avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
     const avatar = avatars.find(a => a.id === userProfile.avatar_url);
-    return avatar?.src || "https://i.pravatar.cc/150?img=5";
+    return avatar?.src || avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
   };
 
   return (
@@ -156,7 +156,7 @@ const Index = () => {
                     </Avatar>
                   ) : (
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src="https://i.pravatar.cc/150?img=5" alt="User avatar" />
+                      <AvatarImage src={avatars[0]?.src || "https://i.pravatar.cc/150?img=5"} alt="User avatar" />
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                   )}

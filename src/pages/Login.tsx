@@ -1,100 +1,142 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { AlertCircle } from 'lucide-react';
+import EmailConfirmNotification from '@/components/auth/EmailConfirmNotification';
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { signIn, user } = useAuth();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmationStatus, setConfirmationStatus] = useState<'pending' | 'sent' | 'confirmed' | 'error' | null>(null);
 
-  // Redirect if already logged in
   useEffect(() => {
+    // Check if user is already logged in
     if (user) {
-      navigate('/');
+      navigate('/', { replace: true });
+    }
+
+    // Check URL parameters for email confirmation
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    if (type === 'signup' && hashParams.get('email')) {
+      setEmail(hashParams.get('email') || '');
+      setConfirmationStatus('sent');
     }
   }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    setError('');
+    setIsLoading(true);
     
     try {
-      await signIn(email, password);
-      
-      // Show confirmation email notification
-      toast({
-        title: "Check your email",
-        description: "A confirmation email has been sent to your email address.",
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
+      
+      if (error) {
+        if (error.message.includes('Email not confirmed')) {
+          setConfirmationStatus('pending');
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!"
+      });
+      
+      navigate('/', { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during login');
+      console.error('Login error:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/5 dark:to-accent/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">TrashHero</CardTitle>
-          <CardDescription>
-            Login to track your environmental impact
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background leaf-pattern">
+      <div className="w-full max-w-md bg-card p-6 rounded-lg shadow-md border border-border">
+        <h1 className="text-2xl font-bold mb-2 text-center">Welcome Back</h1>
+        <p className="text-muted-foreground text-center mb-6">Sign in to continue to TrashHero</p>
+        
+        <form onSubmit={handleLogin} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 p-3 rounded-md text-sm flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              {error}
             </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-center text-sm text-muted-foreground">
-            <span>Don't have an account? </span>
-            <Link
-              to="/signup"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Sign up
-            </Link>
+          )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input 
+              id="email"
+              type="email" 
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
-        </CardFooter>
-      </Card>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+            <Input 
+              id="password"
+              type="password" 
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </Button>
+        </form>
+        
+        {confirmationStatus && (
+          <EmailConfirmNotification 
+            email={email} 
+            status={confirmationStatus} 
+          />
+        )}
+        
+        <p className="text-sm text-center mt-6">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-primary hover:underline font-medium">
+            Sign up
+          </Link>
+        </p>
+      </div>
+      
+      <p className="text-muted-foreground text-sm mt-8 text-center">
+        TrashHero - Make the world cleaner, one pickup at a time
+      </p>
     </div>
   );
 };

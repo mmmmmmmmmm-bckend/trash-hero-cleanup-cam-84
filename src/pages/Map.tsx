@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Globe, Trash, User, MapPin, Search, Filter, Plus } from 'lucide-react';
+import { Globe, Trash, User, MapPin, Search, Filter, Plus, AlertCircle } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,13 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from '@/contexts/AuthContext';
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoidHJhc2hoZXJvYXBwIiwiYSI6ImNscmExMndvMTBhYjQyanA1ZXBjYjRyd3MifQ.aR1T6g2GolBsoEKQZb76iQ";
 
 const Map = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
@@ -31,8 +35,11 @@ const Map = () => {
     location: ''
   });
   const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [locationLoading, setLocationLoading] = useState(false);
   
-  // Egyptian locations data - expanded with more places
+  // Egyptian locations data (we'll filter these based on user location later)
   const egyptLocations = [
     {
       id: 1,
@@ -176,27 +183,36 @@ const Map = () => {
     }
   ];
   
-  // Initialize map
+  // Request location permission and initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
     if (map.current) return; // Map already initialized
     
     mapboxgl.accessToken = MAPBOX_TOKEN;
     
+    // First create map with default center
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [31.2357, 30.0444], // Center on Egypt
+      center: [31.2357, 30.0444], // Default center (Egypt)
       zoom: 5
     });
     
     // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
     
-    // Add markers when map loads
-    map.current.on('load', () => {
-      addMarkersToMap();
-    });
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location Not Available",
+        description: "Your browser doesn't support location services",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Request location permission
+    requestLocationPermission();
     
     return () => {
       if (map.current) {
@@ -205,6 +221,90 @@ const Map = () => {
       }
     };
   }, []);
+
+  // Request location permission
+  const requestLocationPermission = () => {
+    setLocationLoading(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      // Success callback
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([longitude, latitude]);
+        setLocationPermission('granted');
+        setLocationLoading(false);
+        
+        if (map.current) {
+          map.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 14,
+            essential: true
+          });
+          
+          // Add user marker
+          if (userMarker.current) {
+            userMarker.current.setLngLat([longitude, latitude]);
+          } else {
+            // Create marker element
+            const el = document.createElement('div');
+            el.className = 'user-marker';
+            el.innerHTML = '<div class="w-8 h-8 bg-blue-500 border-4 border-white rounded-full pulse-animation flex items-center justify-center"><div class="w-2 h-2 bg-white rounded-full"></div></div>';
+            
+            userMarker.current = new mapboxgl.Marker(el)
+              .setLngLat([longitude, latitude])
+              .addTo(map.current);
+          }
+          
+          // Add markers after getting user location
+          addMarkersToMap();
+        }
+      },
+      // Error callback
+      (error) => {
+        console.error('Error getting location:', error);
+        setLocationPermission('denied');
+        setLocationLoading(false);
+        
+        toast({
+          title: "Location Access Denied",
+          description: "Please enable location access to see nearby bins and cleanups.",
+          variant: "destructive"
+        });
+        
+        // Still add markers even if location is denied
+        if (map.current) {
+          addMarkersToMap();
+        }
+      },
+      // Options
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
+  };
+  
+  // Calculate distance between two points in km
+  const calculateDistance = (lon1: number, lat1: number, lon2: number, lat2: number) => {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+  
+  // Format distance
+  const formatDistance = (distance: number) => {
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m away`;
+    }
+    return `${distance.toFixed(1)}km away`;
+  };
   
   // Add markers to map based on filtered locations
   const addMarkersToMap = () => {
@@ -215,7 +315,7 @@ const Map = () => {
     const newMarkers: mapboxgl.Marker[] = [];
     
     // Filter locations based on tab and search
-    const locations = egyptLocations.filter(loc => {
+    let locations = egyptLocations.filter(loc => {
       // Filter by tab type
       if (activeTab !== 'all') {
         if (activeTab === 'bins' && loc.type !== 'bin') return false;
@@ -233,6 +333,24 @@ const Map = () => {
       
       return true;
     });
+    
+    // Calculate distances if user location is available
+    if (userLocation) {
+      locations = locations.map(loc => {
+        const distance = calculateDistance(
+          userLocation[0], userLocation[1], 
+          loc.coordinates[0], loc.coordinates[1]
+        );
+        return {
+          ...loc,
+          distance: formatDistance(distance),
+          distanceValue: distance
+        };
+      });
+      
+      // Sort by distance
+      locations.sort((a, b) => (a.distanceValue || 0) - (b.distanceValue || 0));
+    }
     
     // Add new markers
     locations.forEach(loc => {
@@ -273,14 +391,15 @@ const Map = () => {
     setMarkers(newMarkers);
   };
   
-  // Update markers when search query, filter, or tab changes
+  // Update markers when search query, filter, tab changes, or location changes
   useEffect(() => {
     if (map.current) {
       addMarkersToMap();
     }
-  }, [searchQuery, filterType, activeTab]);
+  }, [searchQuery, filterType, activeTab, userLocation]);
   
-  const handleAddBin = () => {
+  // Handle adding a new bin
+  const handleAddBin = async () => {
     if (!newBin.name || !newBin.type || !newBin.location) {
       toast({
         title: "Missing information",
@@ -289,19 +408,58 @@ const Map = () => {
       });
       return;
     }
-    
-    // In a real app, we would save to Supabase here
-    toast({
-      title: "Bin Added",
-      description: `${newBin.type} has been added to ${newBin.location}`,
-    });
-    
-    setAddingBin(false);
-    setNewBin({
-      name: '',
-      type: 'General Bin',
-      location: ''
-    });
+
+    if (!userLocation) {
+      toast({
+        title: "Location needed",
+        description: "Please enable location services to add a bin at your current location",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // In a real app, we would save to Supabase here
+      // For now, we'll just show a success toast
+      toast({
+        title: "Bin Added",
+        description: `${newBin.type} has been added to ${newBin.location}`,
+      });
+      
+      setAddingBin(false);
+      setNewBin({
+        name: '',
+        type: 'General Bin',
+        location: ''
+      });
+
+      // Add the new bin to the map immediately
+      if (map.current && userLocation) {
+        const el = document.createElement('div');
+        el.className = 'marker';
+        el.innerHTML = '<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></div>';
+        
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat(userLocation)
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
+            <div class="p-2">
+              <strong>${newBin.name}</strong>
+              <p class="text-sm">${newBin.location}</p>
+              <p class="text-xs text-gray-500">Just added</p>
+            </div>
+          `))
+          .addTo(map.current);
+        
+        setMarkers([...markers, marker]);
+      }
+    } catch (error) {
+      console.error('Error adding bin:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add bin",
+        variant: "destructive"
+      });
+    }
   };
   
   const filteredLocations = (type) => {
@@ -319,6 +477,24 @@ const Map = () => {
     if (type !== 'all') {
       filtered = filtered.filter(loc => loc.type === type);
     }
+
+    // Calculate and add distance if user location is available
+    if (userLocation) {
+      filtered = filtered.map(loc => {
+        const distance = calculateDistance(
+          userLocation[0], userLocation[1], 
+          loc.coordinates[0], loc.coordinates[1]
+        );
+        return {
+          ...loc,
+          distance: formatDistance(distance),
+          distanceValue: distance
+        };
+      });
+      
+      // Sort by distance
+      filtered.sort((a, b) => (a.distanceValue || 0) - (b.distanceValue || 0));
+    }
     
     return filtered;
   };
@@ -328,6 +504,24 @@ const Map = () => {
       <Header title="Community Map" showBack={true} />
       
       <main className="px-4">
+        {/* Location permission banner */}
+        {locationPermission === 'denied' && (
+          <div className="bg-yellow-100 dark:bg-yellow-900/40 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-200 p-4 mb-4">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <p>Location access is disabled. Enable location to see bins near you.</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+              onClick={requestLocationPermission}
+            >
+              Enable Location
+            </Button>
+          </div>
+        )}
+        
         {/* Search input */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -392,7 +586,7 @@ const Map = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location">Location Description</Label>
                     <Input 
                       id="location" 
                       value={newBin.location} 
@@ -400,6 +594,12 @@ const Map = () => {
                       placeholder="Describe the location" 
                     />
                   </div>
+                  {!userLocation && (
+                    <div className="text-yellow-600 dark:text-yellow-400 text-sm flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Enable location to add a bin at your position</span>
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setAddingBin(false)}>Cancel</Button>
@@ -412,6 +612,11 @@ const Map = () => {
           {/* Interactive Map */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
             <div ref={mapContainer} className="w-full h-full absolute" />
+            {locationLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
           
           {/* Content for each tab */}
@@ -468,6 +673,7 @@ const Map = () => {
                 <div key={area.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
                   <h3 className="font-medium">{area.location}</h3>
                   <p className="text-sm text-muted-foreground">{area.description}</p>
+                  {area.distance && <p className="text-xs text-muted-foreground mt-1">{area.distance}</p>}
                 </div>
               ))}
               
@@ -486,6 +692,7 @@ const Map = () => {
                 <div key={report.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
                   <h3 className="font-medium">{report.location}</h3>
                   <p className="text-sm text-muted-foreground">{report.description}</p>
+                  {report.distance && <p className="text-xs text-muted-foreground mt-1">{report.distance}</p>}
                 </div>
               ))}
               
@@ -504,6 +711,7 @@ const Map = () => {
                 <div key={event.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
                   <h3 className="font-medium">{event.name}</h3>
                   <p className="text-sm">{event.location}</p>
+                  {event.distance && <p className="text-xs text-muted-foreground">{event.distance}</p>}
                   <p className="text-xs text-muted-foreground">
                     {new Date(event.date).toLocaleDateString('en-US', {
                       weekday: 'short',
@@ -527,6 +735,25 @@ const Map = () => {
           </TabsContent>
         </Tabs>
       </main>
+      
+      {/* Add CSS for the user location marker pulse animation */}
+      <style jsx global>{`
+        .pulse-animation {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+          }
+        }
+      `}</style>
       
       <NavBar />
     </div>

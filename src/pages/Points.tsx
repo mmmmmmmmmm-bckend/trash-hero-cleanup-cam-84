@@ -1,9 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Gift, Award, ArrowRight, Clock } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock rewards data
 const rewards = [
@@ -30,41 +33,142 @@ const rewards = [
   }
 ];
 
-// Mock points history
-const pointsHistory = [
-  {
-    id: '1',
-    type: 'earned',
-    amount: 25,
-    description: 'Beach cleanup',
-    date: '2 hours ago',
-  },
-  {
-    id: '2',
-    type: 'earned',
-    amount: 50,
-    description: 'Challenge completed: Weekend Warrior',
-    date: '1 day ago',
-  },
-  {
-    id: '3',
-    type: 'earned',
-    amount: 25,
-    description: 'Park cleanup',
-    date: '3 days ago',
-  },
-  {
-    id: '4',
-    type: 'redeemed',
-    amount: -200,
-    description: 'Redeemed: Reusable Water Bottle',
-    date: '1 week ago',
-  }
-];
-
 const Points = () => {
-  const [totalPoints, setTotalPoints] = React.useState(350);
+  const [totalPoints, setTotalPoints] = useState(0);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [pointsHistory, setPointsHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (user) {
+      fetchUserPoints();
+      fetchPointsHistory();
+    }
+  }, [user]);
+  
+  const fetchUserPoints = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTotalPoints(data.total_points || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching points:', error);
+    }
+  };
+  
+  const fetchPointsHistory = async () => {
+    setLoading(true);
+    try {
+      // Fetch user cleanups as they are a source of points
+      const { data: cleanups, error: cleanupsError } = await supabase
+        .from('cleanups')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (cleanupsError) throw cleanupsError;
+      
+      // Convert cleanups to point history entries
+      const historyFromCleanups = cleanups?.map(cleanup => {
+        const pointsEarned = cleanup.points || 25; // Default to 25 if not specified
+        const formattedDate = formatTimeSince(new Date(cleanup.created_at));
+        
+        return {
+          id: cleanup.id,
+          type: 'earned',
+          amount: pointsEarned,
+          description: `Cleanup at ${cleanup.location || 'Unknown Location'}`,
+          date: formattedDate,
+          timestamp: new Date(cleanup.created_at).getTime()
+        };
+      }) || [];
+      
+      // Add some mock redeemed rewards for demonstration
+      // In a real app, you would fetch this from a redemptions table
+      const mockRedemptions = [
+        {
+          id: 'redemption-1',
+          type: 'redeemed',
+          amount: -200,
+          description: 'Redeemed: Reusable Water Bottle',
+          date: '2 weeks ago',
+          timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000 // 2 weeks ago
+        }
+      ];
+      
+      // Combine and sort by timestamp
+      const combinedHistory = [...historyFromCleanups, ...mockRedemptions]
+        .sort((a, b) => b.timestamp - a.timestamp); // Most recent first
+      
+      setPointsHistory(combinedHistory);
+    } catch (error) {
+      console.error('Error fetching points history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper function to format time since a date
+  const formatTimeSince = (date) => {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    let interval = seconds / 31536000; // years
+    if (interval > 1) return Math.floor(interval) + ' years ago';
+    
+    interval = seconds / 2592000; // months
+    if (interval > 1) return Math.floor(interval) + ' months ago';
+    
+    interval = seconds / 86400; // days
+    if (interval > 1) return Math.floor(interval) + ' days ago';
+    
+    interval = seconds / 3600; // hours
+    if (interval > 1) return Math.floor(interval) + ' hours ago';
+    
+    interval = seconds / 60; // minutes
+    if (interval > 1) return Math.floor(interval) + ' minutes ago';
+    
+    return Math.floor(seconds) + ' seconds ago';
+  };
+  
+  const handleRedeemReward = (reward) => {
+    if (totalPoints < reward.pointsCost) {
+      toast({
+        title: "Not Enough Points",
+        description: `You need ${reward.pointsCost - totalPoints} more points to redeem this reward.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Reward Redeemed",
+      description: `You've successfully redeemed ${reward.title}!`,
+    });
+    
+    // In a real app, you would update the database here
+    setTotalPoints(prev => prev - reward.pointsCost);
+    setPointsHistory(prev => [
+      {
+        id: `redemption-${Date.now()}`,
+        type: 'redeemed',
+        amount: -reward.pointsCost,
+        description: `Redeemed: ${reward.title}`,
+        date: 'just now',
+        timestamp: Date.now()
+      },
+      ...prev
+    ]);
+  };
   
   return (
     <div className="min-h-screen pb-16 bg-background">
@@ -163,6 +267,7 @@ const Points = () => {
                         : 'bg-muted text-muted-foreground'
                     }`}
                     disabled={totalPoints < reward.pointsCost}
+                    onClick={() => handleRedeemReward(reward)}
                   >
                     {totalPoints >= reward.pointsCost ? 'Redeem' : 'Not Enough Points'}
                   </button>
@@ -175,41 +280,66 @@ const Points = () => {
         {/* Points history */}
         <section>
           <h2 className="text-lg font-bold mb-3">Points History</h2>
-          <div className="hero-card">
-            <div className="space-y-3">
-              {pointsHistory.map(item => (
-                <div key={item.id} className="flex justify-between items-center pb-3 border-b border-border last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      item.type === 'earned' 
-                        ? 'bg-green-100 dark:bg-green-900/30' 
-                        : 'bg-amber-100 dark:bg-amber-900/30'
-                    }`}>
-                      {item.type === 'earned' ? (
-                        <Star className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <Gift className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm">{item.description}</h4>
-                      <div className="flex items-center text-xs text-muted-foreground mt-1">
-                        <Clock className="w-3 h-3 mr-1" />
-                        <span>{item.date}</span>
+          {loading ? (
+            <div className="hero-card animate-pulse">
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center pb-3 border-b border-border last:border-0 last:pb-0">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+                      <div>
+                        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                        <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
                       </div>
                     </div>
+                    <div className="h-4 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
                   </div>
-                  <span className={`font-bold ${
-                    item.type === 'earned' 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-amber-600 dark:text-amber-400'
-                  }`}>
-                    {item.type === 'earned' ? '+' : ''}{item.amount}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="hero-card">
+              <div className="space-y-3">
+                {pointsHistory.length > 0 ? (
+                  pointsHistory.map(item => (
+                    <div key={item.id} className="flex justify-between items-center pb-3 border-b border-border last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${
+                          item.type === 'earned' 
+                            ? 'bg-green-100 dark:bg-green-900/30' 
+                            : 'bg-amber-100 dark:bg-amber-900/30'
+                        }`}>
+                          {item.type === 'earned' ? (
+                            <Star className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Gift className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm">{item.description}</h4>
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <Clock className="w-3 h-3 mr-1" />
+                            <span>{item.date}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`font-bold ${
+                        item.type === 'earned' 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}>
+                        {item.type === 'earned' ? '+' : ''}{item.amount}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p>No points activity yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       </main>
       

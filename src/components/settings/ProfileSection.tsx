@@ -140,7 +140,7 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
               type="email"
               value={editedProfile.email} 
               disabled
-              className="bg-gray-100"
+              className="bg-gray-100 dark:bg-gray-800 dark:text-gray-300"
             />
           </div>
           <div>

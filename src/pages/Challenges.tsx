@@ -1,10 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Award, Clock, Check, User, Users } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
 import LeaderboardCard from '../components/LeaderboardCard';
 import Header from '../components/Header';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock challenge data
 const activeChallenges = [
@@ -49,24 +52,132 @@ const availableChallenges = [
   },
 ];
 
-// Mock leaderboard data
-const globalLeaders = [
-  { id: '1', name: 'Emma Green', avatar: 'https://i.pravatar.cc/150?img=1', points: 1250, rank: 1 },
-  { id: '2', name: 'Alex River', avatar: 'https://i.pravatar.cc/150?img=2', points: 980, rank: 2 },
-  { id: '3', name: 'Sam Earth', avatar: 'https://i.pravatar.cc/150?img=3', points: 780, rank: 3 },
-  { id: '4', name: 'Taylor Blue', avatar: 'https://i.pravatar.cc/150?img=4', points: 720, rank: 4 },
-  { id: '5', name: 'Jordan Lake', avatar: 'https://i.pravatar.cc/150?img=5', points: 650, rank: 5 },
-];
-
-const localLeaders = [
-  { id: '1', name: 'You', avatar: 'https://i.pravatar.cc/150?img=5', points: 350, rank: 1 },
-  { id: '2', name: 'Neighbor Jane', avatar: 'https://i.pravatar.cc/150?img=6', points: 320, rank: 2 },
-  { id: '3', name: 'Local Hero', avatar: 'https://i.pravatar.cc/150?img=7', points: 290, rank: 3 },
-];
-
 const Challenges = () => {
   const [activeTab, setActiveTab] = useState('challenges'); // 'challenges' or 'leaderboard'
   const [leaderboardType, setLeaderboardType] = useState('global'); // 'global' or 'local'
+  const [globalLeaders, setGlobalLeaders] = useState([]);
+  const [localLeaders, setLocalLeaders] = useState([]);
+  const [userRank, setUserRank] = useState({global: 0, local: 0});
+  const [userPoints, setUserPoints] = useState(0);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (user) {
+      fetchLeaderboardData();
+      fetchUserProfile();
+    }
+  }, [user]);
+  
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) throw error;
+      if (data) {
+        setUserPoints(data.total_points || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+  
+  const fetchLeaderboardData = async () => {
+    setLoading(true);
+    try {
+      // Fetch global leaderboard
+      const { data: globalData, error: globalError } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, total_points')
+        .order('total_points', { ascending: false })
+        .limit(10);
+        
+      if (globalError) throw globalError;
+      
+      // Fetch local leaderboard (for demonstration, we use top 5 for local)
+      const { data: localData, error: localError } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, total_points')
+        .order('total_points', { ascending: false })
+        .limit(5);
+        
+      if (localError) throw localError;
+      
+      // Format leaderboard data
+      if (globalData) {
+        const formattedGlobal = formatLeaderboardData(globalData);
+        setGlobalLeaders(formattedGlobal);
+        
+        // Find user's global rank
+        const userGlobalRank = globalData.findIndex(profile => profile.id === user.id);
+        if (userGlobalRank !== -1) {
+          setUserRank(prev => ({...prev, global: userGlobalRank + 1}));
+        } else {
+          // If user not in top 10, we need to count all users with higher points
+          const { count, error } = await supabase
+            .from('profiles')
+            .select('id', { count: 'exact' })
+            .gt('total_points', userPoints);
+            
+          if (!error) {
+            setUserRank(prev => ({...prev, global: count + 1}));
+          }
+        }
+      }
+      
+      if (localData) {
+        const formattedLocal = formatLeaderboardData(localData);
+        setLocalLeaders(formattedLocal);
+        
+        // Find user's local rank
+        const userLocalRank = localData.findIndex(profile => profile.id === user.id);
+        setUserRank(prev => ({...prev, local: userLocalRank !== -1 ? userLocalRank + 1 : 0}));
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard data:', error);
+      toast({
+        title: "Error",
+        description: "Could not load leaderboard data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper function to format leaderboard data
+  const formatLeaderboardData = (data) => {
+    return data.map((user, index) => {
+      const avatarSrc = user.avatar_url 
+        ? (avatars.find(a => a.id === user.avatar_url)?.src || `https://i.pravatar.cc/150?img=${index + 1}`) 
+        : `https://i.pravatar.cc/150?img=${index + 1}`;
+      
+      return {
+        id: user.id,
+        name: user.full_name || user.username || `User ${index + 1}`,
+        avatar: avatarSrc,
+        points: user.total_points || 0,
+        rank: index + 1
+      };
+    });
+  };
+  
+  // Import avatars
+  const avatars = [
+    { id: 'avatar1', name: 'Cairo Style', src: 'https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=200&q=80' },
+    { id: 'avatar2', name: 'Alexandria', src: 'https://images.unsplash.com/photo-1595503240812-7286dafaddc1?w=200&q=80' },
+    { id: 'avatar3', name: 'Nile Explorer', src: 'https://images.unsplash.com/photo-1578927312881-55555eb2eb7f?w=200&q=80' },
+    { id: 'avatar4', name: 'Desert Nomad', src: 'https://images.unsplash.com/photo-1591014141178-02091240f1c6?w=200&q=80' },
+    { id: 'avatar5', name: 'Red Sea', src: 'https://images.unsplash.com/photo-1566677379313-461196b3e5ad?w=200&q=80' },
+    { id: 'avatar6', name: 'Oasis', src: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=200&q=80' },
+    { id: 'avatar7', name: 'Sphinx', src: 'https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=200&q=80' },
+    { id: 'avatar8', name: 'Pyramid', src: 'https://images.unsplash.com/photo-1668229550805-c3e2f121c01e?w=200&q=80' }
+  ];
   
   return (
     <div className="min-h-screen pb-16 bg-background">
@@ -222,21 +333,45 @@ const Challenges = () => {
             </div>
             
             {/* Leaderboard table */}
-            <LeaderboardCard 
-              title={leaderboardType === 'global' ? "Global Leaders" : "Leaders Near You"}
-              entries={leaderboardType === 'global' ? globalLeaders : localLeaders}
-            />
+            {loading ? (
+              <div className="bg-card p-4 rounded-lg shadow-sm animate-pulse space-y-4">
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40"></div>
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                      <div className="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                      <div className="w-10 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <LeaderboardCard 
+                title={leaderboardType === 'global' ? "Global Leaders" : "Leaders Near You"}
+                entries={leaderboardType === 'global' ? globalLeaders : localLeaders}
+              />
+            )}
             
             {/* Your rank */}
             <div className="bg-card p-4 rounded-lg shadow-sm">
               <h3 className="font-medium text-sm text-muted-foreground mb-2">Your Rank</h3>
               <div className="flex items-center">
-                <span className="font-bold text-lg w-8">{leaderboardType === 'global' ? '42' : '1'}</span>
+                <span className="font-bold text-lg w-8">
+                  {leaderboardType === 'global' ? 
+                    (userRank.global || '?') : 
+                    (userRank.local || '?')}
+                </span>
                 <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <img src="https://i.pravatar.cc/150?img=5" alt="Your avatar" className="w-full h-full object-cover" />
+                  <img 
+                    src={avatars.find(a => a.id === user?.user_metadata?.avatar_url || 'avatar1')?.src || 'https://i.pravatar.cc/150?img=5'} 
+                    alt="Your avatar" 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
                 <span className="ml-3 font-medium">You</span>
-                <span className="ml-auto font-bold text-primary">350 pts</span>
+                <span className="ml-auto font-bold text-primary">{userPoints} pts</span>
               </div>
             </div>
             
