@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Bell, Lock, LogOut, Mail, Moon, Sun, Globe, Shield, HelpCircle, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +12,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import AvatarUploader from '@/components/AvatarUploader';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -23,13 +23,26 @@ const Settings = () => {
     full_name: '',
     phone_number: '',
     email: '',
-    avatar_url: null,
+    avatar_url: 'avatar1',
     notifications: true,
     locationSharing: true,
   });
 
+  // Predefined avatars
+  const avatars = [
+    {id: 'avatar1', src: '/placeholder.svg', alt: 'Pyramid avatar'},
+    {id: 'avatar2', src: '/placeholder.svg', alt: 'Sphinx avatar'},
+    {id: 'avatar3', src: '/placeholder.svg', alt: 'Palm tree avatar'},
+    {id: 'avatar4', src: '/placeholder.svg', alt: 'Camel avatar'},
+    {id: 'avatar5', src: '/placeholder.svg', alt: 'Nile avatar'},
+    {id: 'avatar6', src: '/placeholder.svg', alt: 'Ankh avatar'},
+    {id: 'avatar7', src: '/placeholder.svg', alt: 'Pharaoh avatar'},
+    {id: 'avatar8', src: '/placeholder.svg', alt: 'Egyptian cat avatar'},
+  ];
+
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({ ...profile });
+  const [selectedAvatar, setSelectedAvatar] = useState(profile.avatar_url);
 
   // Load user profile from Supabase
   useEffect(() => {
@@ -54,7 +67,7 @@ const Settings = () => {
             full_name: data.full_name || '',
             phone_number: data.phone_number || '',
             email: user.email || '',
-            avatar_url: data.avatar_url,
+            avatar_url: data.avatar_url || 'avatar1',
             notifications: true,
             locationSharing: true,
           });
@@ -63,10 +76,11 @@ const Settings = () => {
             full_name: data.full_name || '',
             phone_number: data.phone_number || '',
             email: user.email || '',
-            avatar_url: data.avatar_url,
+            avatar_url: data.avatar_url || 'avatar1',
             notifications: true,
             locationSharing: true,
           });
+          setSelectedAvatar(data.avatar_url || 'avatar1');
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -75,18 +89,6 @@ const Settings = () => {
 
     fetchProfile();
   }, [user]);
-
-  const handleAvatarChange = (url: string) => {
-    setProfile(prev => ({
-      ...prev,
-      avatar_url: url
-    }));
-    
-    setEditedProfile(prev => ({
-      ...prev,
-      avatar_url: url
-    }));
-  };
 
   const handleToggleNotifications = () => {
     setProfile(prev => ({
@@ -119,6 +121,7 @@ const Settings = () => {
   const handleStartEditing = () => {
     setIsEditing(true);
     setEditedProfile({ ...profile });
+    setSelectedAvatar(profile.avatar_url);
   };
 
   const handleSaveChanges = async () => {
@@ -131,12 +134,16 @@ const Settings = () => {
           username: editedProfile.username,
           full_name: editedProfile.full_name,
           phone_number: editedProfile.phone_number,
+          avatar_url: selectedAvatar,
         })
         .eq('id', user.id);
       
       if (error) throw error;
       
-      setProfile(editedProfile);
+      setProfile({
+        ...editedProfile,
+        avatar_url: selectedAvatar
+      });
       setIsEditing(false);
       
       toast({
@@ -154,6 +161,7 @@ const Settings = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    setSelectedAvatar(profile.avatar_url);
   };
 
   return (
@@ -168,27 +176,35 @@ const Settings = () => {
               <DialogTrigger asChild>
                 <div className="cursor-pointer mb-2">
                   <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    {profile.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt="User avatar" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg font-bold">
-                        {profile.full_name?.substring(0, 1) || 'U'}
-                      </div>
-                    )}
+                    <img 
+                      src={avatars.find(a => a.id === profile.avatar_url)?.src || '/placeholder.svg'} 
+                      alt="User avatar" 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 </div>
               </DialogTrigger>
               <DialogContent className="max-w-sm">
-                <DialogTitle className="text-center mb-4">Change Your Avatar</DialogTitle>
-                <AvatarUploader 
-                  currentAvatarUrl={profile.avatar_url}
-                  username={profile.username}
-                  onAvatarChange={handleAvatarChange}
-                />
+                <DialogTitle className="text-center mb-4">Choose Your Avatar</DialogTitle>
+                <div className="grid grid-cols-4 gap-3">
+                  {avatars.map(avatar => (
+                    <button
+                      key={avatar.id}
+                      className={`rounded-lg p-2 ${selectedAvatar === avatar.id ? 'bg-primary/20 ring-2 ring-primary' : 'bg-accent/10'}`}
+                      onClick={() => setSelectedAvatar(avatar.id)}
+                    >
+                      <img src={avatar.src} alt={avatar.alt} className="w-full aspect-square rounded object-cover" />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button 
+                    onClick={() => handleSaveChanges()}
+                    disabled={selectedAvatar === profile.avatar_url}
+                  >
+                    Save Avatar
+                  </Button>
+                </div>
               </DialogContent>
             </Dialog>
             <h2 className="text-xl font-bold">{profile.full_name}</h2>

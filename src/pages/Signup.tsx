@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, Phone, Upload } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,6 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -26,9 +26,19 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState('avatar1');
+
+  // Predefined avatars
+  const avatars = [
+    {id: 'avatar1', src: '/placeholder.svg', alt: 'Pyramid avatar'},
+    {id: 'avatar2', src: '/placeholder.svg', alt: 'Sphinx avatar'},
+    {id: 'avatar3', src: '/placeholder.svg', alt: 'Palm tree avatar'},
+    {id: 'avatar4', src: '/placeholder.svg', alt: 'Camel avatar'},
+    {id: 'avatar5', src: '/placeholder.svg', alt: 'Nile avatar'},
+    {id: 'avatar6', src: '/placeholder.svg', alt: 'Ankh avatar'},
+    {id: 'avatar7', src: '/placeholder.svg', alt: 'Pharaoh avatar'},
+    {id: 'avatar8', src: '/placeholder.svg', alt: 'Egyptian cat avatar'},
+  ];
 
   // Redirect if already logged in
   useEffect(() => {
@@ -86,73 +96,6 @@ const Signup = () => {
     return 'bg-green-500';
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) {
-      return;
-    }
-    
-    const file = e.target.files[0];
-    setAvatarFile(file);
-    
-    // Preview the image
-    const objectUrl = URL.createObjectURL(file);
-    setAvatarUrl(objectUrl);
-  };
-
-  const uploadAvatar = async (userId: string): Promise<string | null> => {
-    if (!avatarFile) return null;
-    
-    try {
-      setUploadingAvatar(true);
-      
-      // Check if storage bucket exists, create if not
-      const { data: bucketData, error: bucketError } = await supabase
-        .storage
-        .getBucket('avatars');
-      
-      if (bucketError && bucketError.message.includes('does not exist')) {
-        // The bucket doesn't exist, we would create it via SQL migration or let the user know
-        toast({
-          title: "Storage Error",
-          description: "Avatar storage is not set up. Please contact support.",
-          variant: "destructive",
-        });
-        return null;
-      }
-      
-      // Upload the file
-      const fileExt = avatarFile.name.split('.').pop();
-      const filePath = `${userId}/${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase
-        .storage
-        .from('avatars')
-        .upload(filePath, avatarFile);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Get public URL
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-      
-      return publicUrlData.publicUrl;
-    } catch (error: any) {
-      console.error('Error uploading avatar:', error);
-      toast({
-        title: "Avatar Upload Failed",
-        description: error.message || "There was an error uploading your avatar.",
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -183,24 +126,20 @@ const Signup = () => {
       const userData = {
         name,
         username,
-        phone: fullPhone
+        phone: fullPhone,
+        avatar: selectedAvatar // Store the selected avatar ID
       };
 
       const { data, error } = await signUp(email, password, userData);
       
       if (error) throw error;
       
-      // If we have an avatar and user data, upload it
-      if (avatarFile && data?.user) {
-        const avatarUrl = await uploadAvatar(data.user.id);
-        
-        // If avatar was uploaded, update the profile with the URL
-        if (avatarUrl) {
-          await supabase
-            .from('profiles')
-            .update({ avatar_url: avatarUrl })
-            .eq('id', data.user.id);
-        }
+      // Update profile with the avatar ID
+      if (data?.user) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: selectedAvatar })
+          .eq('id', data.user.id);
       }
     } catch (error: any) {
       toast({
@@ -224,33 +163,6 @@ const Signup = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
-            {/* Avatar Upload */}
-            <div className="flex flex-col items-center mb-4">
-              <div className="relative group">
-                <Avatar className="w-24 h-24 mb-3 border-2 border-primary">
-                  {avatarUrl ? (
-                    <AvatarImage src={avatarUrl} alt="Avatar preview" />
-                  ) : (
-                    <AvatarFallback className="bg-primary/20">
-                      <User className="w-12 h-12 text-primary/60" />
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <label htmlFor="avatar-upload" className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                  <Upload className="w-8 h-8" />
-                </label>
-                <input 
-                  id="avatar-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleAvatarChange}
-                  disabled={loading || uploadingAvatar}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">Upload profile photo</p>
-            </div>
-
             <div className="space-y-2">
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -382,7 +294,24 @@ const Signup = () => {
               )}
             </div>
             
-            <Button type="submit" className="w-full" disabled={loading || uploadingAvatar}>
+            {/* Predefined avatar selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium mb-1">Choose an avatar</label>
+              <div className="grid grid-cols-4 gap-2">
+                {avatars.map(avatar => (
+                  <button
+                    key={avatar.id}
+                    type="button"
+                    className={`rounded-lg p-2 ${selectedAvatar === avatar.id ? 'bg-primary/20 ring-2 ring-primary' : 'bg-accent/10'}`}
+                    onClick={() => setSelectedAvatar(avatar.id)}
+                  >
+                    <img src={avatar.src} alt={avatar.alt} className="w-full aspect-square rounded object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>
