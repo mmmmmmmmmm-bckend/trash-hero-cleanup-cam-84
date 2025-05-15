@@ -20,23 +20,26 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 leaf-pattern">
-      <Header />
-      
-      {/* User points summary */}
-      <div className="bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white p-6 shadow-md">
-        <div className="max-w-md mx-auto">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm opacity-90">Your impact</p>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">{userPoints}</span>
-                <Star className="w-5 h-5" />
-                <span className="text-sm opacity-90">points</span>
+      <div className="bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white">
+        {/* Header component must be inside this div to share the gradient background */}
+        <Header />
+        
+        {/* User points summary - now part of the same gradient container */}
+        <div className="p-6">
+          <div className="max-w-md mx-auto">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Your impact</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold">{userPoints}</span>
+                  <Star className="w-5 h-5" />
+                  <span className="text-sm opacity-90">points</span>
+                </div>
               </div>
-            </div>
-            <div className="bg-white/20 p-2 rounded-full">
-              <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                <img src="https://i.pravatar.cc/150?img=5" alt="User avatar" className="w-full h-full object-cover" />
+              <div className="bg-white/20 p-2 rounded-full">
+                <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
+                  <img src="https://i.pravatar.cc/150?img=5" alt="User avatar" className="w-full h-full object-cover" />
+                </div>
               </div>
             </div>
           </div>

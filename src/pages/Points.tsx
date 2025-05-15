@@ -3,6 +3,7 @@ import React from 'react';
 import { Star, Gift, Award, ArrowRight, Clock } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
+import { useNavigate } from 'react-router-dom';
 
 // Mock rewards data
 const rewards = [
@@ -63,6 +64,7 @@ const pointsHistory = [
 
 const Points = () => {
   const [totalPoints, setTotalPoints] = React.useState(350);
+  const navigate = useNavigate();
   
   return (
     <div className="min-h-screen pb-16 bg-background">
@@ -83,7 +85,10 @@ const Points = () => {
         <section>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold">Your Badges</h2>
-            <button className="text-accent text-sm flex items-center">
+            <button 
+              onClick={() => navigate('/badges')} 
+              className="text-accent text-sm flex items-center"
+            >
               All Badges
               <ArrowRight className="w-4 h-4 ml-1" />
             </button>
@@ -123,7 +128,10 @@ const Points = () => {
         <section>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold">Available Rewards</h2>
-            <button className="text-accent text-sm flex items-center">
+            <button 
+              onClick={() => navigate('/rewards')} 
+              className="text-accent text-sm flex items-center"
+            >
               More
               <ArrowRight className="w-4 h-4 ml-1" />
             </button>

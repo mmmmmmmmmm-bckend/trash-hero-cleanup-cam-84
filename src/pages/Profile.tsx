@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { User, Award, Star, Clock, MapPin, Trash, Settings, Check } from 'lucide-react';
+import { User, Award, Star, Clock, MapPin, Trash, Check } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
 import Header from '../components/Header';
@@ -57,17 +58,9 @@ const Profile = () => {
       
       {/* Profile header - made movable/scrollable */}
       <div className={`bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white pt-6 ${
-        headerCompact ? 'pb-6' : 'pb-16'
+        headerCompact ? 'pb-6' : 'pb-12'
       } transition-all duration-300 relative`}>
-        <div className="absolute top-4 right-4">
-          <button className="p-2 bg-white/10 rounded-full">
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className={`flex flex-col items-center transition-all duration-300 ${
-          headerCompact ? 'transform scale-90' : ''
-        }`}>
+        <div className="flex flex-col items-center transition-all duration-300 ${">
           <div className="w-20 h-20 bg-white rounded-full overflow-hidden mb-3">
             <img 
               src="https://i.pravatar.cc/150?img=5" 
@@ -83,11 +76,11 @@ const Profile = () => {
         </div>
       </div>
       
-      {/* Stats cards */}
+      {/* Stats cards - adjusted positioning */}
       <div className={`max-w-md mx-auto px-4 transition-all duration-300 ${
-        headerCompact ? '-mt-6' : '-mt-10'
+        headerCompact ? '-mt-6' : '-mt-8'
       }`}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="hero-card animate-scale-in">
             <div className="flex gap-3 items-center">
               <div className="p-2 bg-primary/10 rounded-full">
@@ -138,10 +131,16 @@ const Profile = () => {
         </div>
       </div>
       
-      <main className="max-w-md mx-auto p-4 mt-4 space-y-6">
+      <main className="max-w-md mx-auto p-4 space-y-6">
         {/* Badges */}
         <section>
-          <h2 className="text-lg font-bold mb-3">Your Badges</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold">Your Badges</h2>
+            <a href="/badges" className="text-accent text-sm flex items-center">
+              All Badges
+              <Award className="w-4 h-4 ml-1" />
+            </a>
+          </div>
           <div className="hero-card">
             <div className="grid grid-cols-4 gap-3">
               <div className="flex flex-col items-center">

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useLocation } from 'react-router-dom';
 
@@ -18,7 +18,7 @@ const Header = ({ title, showBack = false }: HeaderProps) => {
   return (
     <header className={`sticky top-0 z-50 w-full flex justify-between items-center px-4 py-3 ${
       isHomePage 
-        ? 'bg-gradient-to-r from-primary via-primary to-accent dark:from-sidebar-primary dark:via-sidebar-primary dark:to-accent/80 text-primary-foreground' 
+        ? 'bg-transparent text-primary-foreground' 
         : 'bg-background dark:bg-background/95 backdrop-blur-sm border-b'
     }`}>
       <div className="flex items-center">
@@ -37,13 +37,13 @@ const Header = ({ title, showBack = false }: HeaderProps) => {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        {!isHomePage && location.pathname !== '/settings' && (
+        {!isHomePage && location.pathname !== '/settings' && location.pathname !== '/profile' && (
           <button 
             onClick={() => navigate('/settings')}
             className="p-2 rounded-full hover:bg-muted/60 transition-colors"
             aria-label="Settings"
           >
-            <Settings className="h-5 w-5" />
+            {/* Settings icon removed from profile page only */}
           </button>
         )}
       </div>
