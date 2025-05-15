@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,7 +126,7 @@ const Map = () => {
       id: 8,
       name: 'Compost Bin',
       type: 'bin',
-4 distance: '300m away',
+      distance: '300m away',
       location: 'Aswan Riverfront',
       coordinates: [32.8752, 24.0889]
     },
