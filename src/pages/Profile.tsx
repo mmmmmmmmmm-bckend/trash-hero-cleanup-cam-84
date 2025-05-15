@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { User, Award, Star, Clock, MapPin, Trash, Check } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -59,8 +58,8 @@ const Profile = () => {
       {/* Profile header - made movable/scrollable */}
       <div className={`bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white pt-6 ${
         headerCompact ? 'pb-6' : 'pb-12'
-      } transition-all duration-300 relative`}>
-        <div className="flex flex-col items-center transition-all duration-300 ${">
+      } transition-all duration-300 relative z-10`}>
+        <div className="flex flex-col items-center transition-all duration-300">
           <div className="w-20 h-20 bg-white rounded-full overflow-hidden mb-3">
             <img 
               src="https://i.pravatar.cc/150?img=5" 
@@ -79,7 +78,7 @@ const Profile = () => {
       {/* Stats cards - adjusted positioning */}
       <div className={`max-w-md mx-auto px-4 transition-all duration-300 ${
         headerCompact ? '-mt-6' : '-mt-8'
-      }`}>
+      } relative z-20`}>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="hero-card animate-scale-in">
             <div className="flex gap-3 items-center">
@@ -131,7 +130,7 @@ const Profile = () => {
         </div>
       </div>
       
-      <main className="max-w-md mx-auto p-4 space-y-6">
+      <main className="max-w-md mx-auto p-4 space-y-6 relative z-20 mt-4">
         {/* Badges */}
         <section>
           <div className="flex justify-between items-center mb-3">
