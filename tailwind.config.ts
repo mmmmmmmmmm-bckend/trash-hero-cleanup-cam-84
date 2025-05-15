@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// TrashHero custom colors
+				hero: {
+					primary: '#4CAF50',     // Green
+					secondary: '#81C784',   // Lighter green
+					accent: '#1E88E5',      // Blue
+					background: '#F9FBF7',  // Light off-white with green tint
+					text: '#2E3A23',        // Dark green text
+					success: '#43A047',     // Success green
+					warning: '#F9A825',     // Warning yellow
+					danger: '#E53935',      // Danger red
 				}
 			},
 			borderRadius: {
@@ -84,11 +96,40 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+				'pulse-green': {
+					'0%, 100%': {
+						opacity: '1',
+					},
+					'50%': {
+						opacity: '0.7',
+					},
+				},
+				'bounce-small': {
+					'0%, 100%': {
+						transform: 'translateY(0)',
+					},
+					'50%': {
+						transform: 'translateY(-10px)',
+					},
+				},
+				'scale-in': {
+					'0%': {
+						transform: 'scale(0.9)',
+						opacity: '0',
+					},
+					'100%': {
+						transform: 'scale(1)',
+						opacity: '1',
+					},
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-green': 'pulse-green 2s infinite',
+				'bounce-small': 'bounce-small 2s ease-in-out infinite',
+				'scale-in': 'scale-in 0.2s ease-out',
 			}
 		}
 	},
