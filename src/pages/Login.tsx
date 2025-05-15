@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, user } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,12 @@ const Login = () => {
     
     try {
       await signIn(email, password);
+      
+      // Show confirmation email notification
+      toast({
+        title: "Check your email",
+        description: "A confirmation email has been sent to your email address.",
+      });
     } finally {
       setLoading(false);
     }
