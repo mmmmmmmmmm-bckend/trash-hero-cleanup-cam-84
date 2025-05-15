@@ -2,7 +2,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Map, Award, User, Star } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
 
 const NavBar = () => {
   const location = useLocation();
@@ -18,7 +17,7 @@ const NavBar = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40 shadow-lg">
       <nav className="flex justify-around items-center h-16">
         {navItems.map((item) => (
           <Link 
@@ -34,9 +33,6 @@ const NavBar = () => {
             <span className="text-xs mt-1">{item.label}</span>
           </Link>
         ))}
-        <div className="flex items-center justify-center">
-          <ThemeToggle />
-        </div>
       </nav>
     </div>
   );

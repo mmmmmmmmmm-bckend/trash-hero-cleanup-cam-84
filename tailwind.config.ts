@@ -73,6 +73,9 @@ export default {
 					success: '#43A047',     // Success green
 					warning: '#F9A825',     // Warning yellow
 					danger: '#E53935',      // Danger red
+					darkPrimary: '#2D5F34', // Darker green for dark mode
+					darkSecondary: '#1E3B21', // Very dark green for dark mode
+					darkAccent: '#164B72',   // Darker blue for dark mode
 				}
 			},
 			borderRadius: {

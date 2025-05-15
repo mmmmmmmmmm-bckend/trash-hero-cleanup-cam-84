@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
 import NavBar from '../components/NavBar';
+import Header from '../components/Header';
 import LeaderboardCard from '../components/LeaderboardCard';
 import PointsBadge from '../components/PointsBadge';
 
@@ -19,10 +20,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 leaf-pattern">
-      {/* Header with user points */}
-      <header className="bg-gradient-to-r from-hero-primary to-hero-secondary text-white p-6 rounded-b-3xl shadow-md">
+      <Header />
+      
+      {/* User points summary */}
+      <div className="bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white p-6 shadow-md">
         <div className="max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-2">TrashHero</h1>
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm opacity-90">Your impact</p>
@@ -39,7 +41,7 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main content */}
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
@@ -84,16 +86,16 @@ const Index = () => {
           <h2 className="text-lg font-bold mb-3">Your Impact</h2>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-hero-primary">12</p>
-              <p className="text-xs text-gray-600">Cleanups</p>
+              <p className="text-2xl font-bold text-primary">12</p>
+              <p className="text-xs text-muted-foreground">Cleanups</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-hero-primary">5.2</p>
-              <p className="text-xs text-gray-600">kg Collected</p>
+              <p className="text-2xl font-bold text-primary">5.2</p>
+              <p className="text-xs text-muted-foreground">kg Collected</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-hero-primary">3</p>
-              <p className="text-xs text-gray-600">Badges</p>
+              <p className="text-2xl font-bold text-primary">3</p>
+              <p className="text-xs text-muted-foreground">Badges</p>
             </div>
           </div>
         </div>
@@ -104,7 +106,7 @@ const Index = () => {
             <h2 className="text-lg font-bold">Active Challenge</h2>
             <button 
               onClick={() => navigate('/challenges')}
-              className="text-hero-accent text-sm"
+              className="text-accent dark:text-accent text-sm"
             >
               View All
             </button>
@@ -114,13 +116,13 @@ const Index = () => {
               <h3 className="font-medium">Weekend Warrior</h3>
               <PointsBadge points={250} size="small" />
             </div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               Complete 3 cleanups this weekend
             </p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
-              <div className="bg-hero-accent h-2.5 rounded-full" style={{ width: '66%' }}></div>
+            <div className="w-full bg-gray-200 dark:bg-muted rounded-full h-2.5 mb-1">
+              <div className="bg-accent dark:bg-accent h-2.5 rounded-full" style={{ width: '66%' }}></div>
             </div>
-            <p className="text-xs text-right text-gray-600">2/3 completed</p>
+            <p className="text-xs text-right text-muted-foreground">2/3 completed</p>
           </div>
         </div>
 
@@ -128,7 +130,7 @@ const Index = () => {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold">Leaderboard</h2>
-            <span className="text-sm text-gray-600">This Week</span>
+            <span className="text-sm text-muted-foreground">This Week</span>
           </div>
           <LeaderboardCard 
             title="Top Heroes"

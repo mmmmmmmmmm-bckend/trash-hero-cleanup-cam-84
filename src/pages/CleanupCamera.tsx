@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Video, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import NavBar from '../components/NavBar';
+import Header from '../components/Header';
 
 const CleanupCamera = () => {
   const navigate = useNavigate();
@@ -146,7 +147,9 @@ const CleanupCamera = () => {
 
   return (
     <div className="min-h-screen bg-black pb-16">
-      <div className="relative h-screen">
+      <Header title="Record Cleanup" showBack={true} />
+      
+      <div className="relative h-[calc(100vh-132px)]">
         {/* Camera view */}
         <div className="relative h-full">
           <video 
@@ -212,7 +215,7 @@ const CleanupCamera = () => {
               {videoData[step] && (
                 <button 
                   onClick={nextStep}
-                  className="bg-hero-primary text-white px-4 py-2 rounded-full flex items-center gap-1"
+                  className="bg-primary text-white px-4 py-2 rounded-full flex items-center gap-1"
                 >
                   {step === steps.length - 1 ? 'Submit' : 'Next'}
                   <ArrowRight className="w-4 h-4" />
