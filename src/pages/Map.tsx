@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
+import GoogleMapComponent from '@/components/map/GoogleMapComponent';
+import LocationList from '@/components/map/LocationList';
+import AddBinDialog from '@/components/map/AddBinDialog';
+import MapTutorial from '@/components/MapTutorial';
 
 // Google Maps API Key
 const GOOGLE_MAPS_API_KEY = "AIzaSyDqrk3vgqzwRJZ6LMg9wNECzaeVaIvmOa4";
@@ -43,7 +43,7 @@ const containerStyle = {
 const Map = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate(); // Added useNavigate hook
+  const navigate = useNavigate(); 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
@@ -59,6 +59,7 @@ const Map = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
   const [zoom, setZoom] = useState(13);
+  const [showMapTutorial, setShowMapTutorial] = useState(false);
   
   // Setup Google Maps with libraries prop correctly formatted
   const { isLoaded, loadError } = useJsApiLoader({
@@ -379,40 +380,16 @@ const Map = () => {
     setSelectedLocation(location);
   };
 
-  // Render map markers based on filtered locations
-  const renderMarkers = () => {
-    const filtered = [...filteredLocations(activeTab === 'all' ? 'all' : activeTab)];
-    
-    return filtered.map(location => (
-      <MarkerF
-        key={location.id}
-        position={{
-          lat: location.coordinates[1],
-          lng: location.coordinates[0]
-        }}
-        onClick={() => handleMarkerClick(location)}
-        icon={{
-          url: getMarkerIconByType(location.type),
-          scaledSize: new window.google.maps.Size(30, 30)
-        }}
-      />
-    ));
+  // Handle info window close
+  const handleInfoWindowClose = () => {
+    setSelectedLocation(null);
   };
 
-  // Get marker icon based on location type
-  const getMarkerIconByType = (type: string) => {
-    switch(type) {
-      case 'bin':
-        return 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
-      case 'dirty':
-        return 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
-      case 'report':
-        return 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png';
-      case 'event':
-        return 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
-      default:
-        return 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
-    }
+  // Handle location select from list
+  const handleLocationSelect = (location: Location) => {
+    setSelectedLocation(location);
+    setMapCenter({ lat: location.coordinates[1], lng: location.coordinates[0] });
+    setZoom(15);
   };
 
   // Check if map is ready
@@ -469,12 +446,18 @@ const Map = () => {
             variant="ghost" 
             size="sm" 
             className="flex items-center gap-1 text-primary"
-            onClick={() => navigate("/")}
+            onClick={() => setShowMapTutorial(true)}
           >
             <HelpCircle className="h-4 w-4" />
             Help
           </Button>
         </div>
+        
+        {/* Map Tutorial Dialog */}
+        <MapTutorial 
+          isOpen={showMapTutorial} 
+          onClose={() => setShowMapTutorial(false)} 
+        />
         
         {/* Tabs */}
         <Tabs defaultValue="bins" className="w-full" onValueChange={(value) => setActiveTab(value)}>
@@ -491,239 +474,78 @@ const Map = () => {
               Filter
             </Button>
             
-            <Dialog open={addingBin} onOpenChange={setAddingBin}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="flex items-center gap-1 bg-green-600 hover:bg-green-700">
-                  <Plus className="h-4 w-4" />
-                  Add Bin
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Trash Bin</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Bin Name</Label>
-                    <Input 
-                      id="name" 
-                      value={newBin.name} 
-                      onChange={(e) => setNewBin({...newBin, name: e.target.value})}
-                      placeholder="Recycling Bin"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Bin Type</Label>
-                    <Select 
-                      value={newBin.type} 
-                      onValueChange={(value) => setNewBin({...newBin, type: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select bin type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="General Bin">General Bin</SelectItem>
-                        <SelectItem value="Recycling Bin">Recycling Bin</SelectItem>
-                        <SelectItem value="Compost Bin">Compost Bin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location Description</Label>
-                    <Input 
-                      id="location" 
-                      value={newBin.location} 
-                      onChange={(e) => setNewBin({...newBin, location: e.target.value})}
-                      placeholder="Describe the location" 
-                    />
-                  </div>
-                  {!userLocation && (
-                    <div className="text-yellow-600 dark:text-yellow-400 text-sm flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>Enable location to add a bin at your position</span>
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setAddingBin(false)}>Cancel</Button>
-                  <Button onClick={handleAddBin}>Add Bin</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <AddBinDialog
+              open={addingBin}
+              onOpenChange={setAddingBin}
+              newBin={newBin}
+              setNewBin={setNewBin}
+              onAddBin={handleAddBin}
+              userLocation={userLocation}
+            />
+            
+            <Button 
+              size="sm" 
+              className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
+              onClick={() => setAddingBin(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Bin
+            </Button>
           </div>
           
           {/* Interactive Map */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
-            {isLoaded ? (
-              <GoogleMap
-                mapContainerStyle={containerStyle}
-                center={mapCenter}
-                zoom={zoom}
-                options={{
-                  zoomControl: true,
-                  mapTypeControl: false,
-                  streetViewControl: false,
-                  fullscreenControl: false
-                }}
-              >
-                {/* User Location Marker */}
-                {userLocation && (
-                  <MarkerF
-                    position={userLocation}
-                    icon={{
-                      path: window.google.maps.SymbolPath.CIRCLE,
-                      scale: 7,
-                      fillColor: "#4285F4",
-                      fillOpacity: 1,
-                      strokeColor: "#ffffff",
-                      strokeWeight: 2,
-                    }}
-                  />
-                )}
-
-                {/* Location Markers */}
-                {renderMarkers()}
-
-                {/* Info Window for selected location */}
-                {selectedLocation && (
-                  <InfoWindowF
-                    position={{
-                      lat: selectedLocation.coordinates[1],
-                      lng: selectedLocation.coordinates[0]
-                    }}
-                    onCloseClick={() => setSelectedLocation(null)}
-                  >
-                    <div className="p-2 max-w-[200px]">
-                      <h3 className="font-medium text-sm">{selectedLocation.name}</h3>
-                      <p className="text-xs text-gray-600">{selectedLocation.location}</p>
-                      {selectedLocation.description && (
-                        <p className="text-xs mt-1">{selectedLocation.description}</p>
-                      )}
-                      {selectedLocation.distance && (
-                        <p className="text-xs text-blue-600 mt-1">{selectedLocation.distance}</p>
-                      )}
-                    </div>
-                  </InfoWindowF>
-                )}
-              </GoogleMap>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
+            <GoogleMapComponent
+              isLoaded={isLoaded}
+              mapCenter={mapCenter}
+              zoom={zoom}
+              userLocation={userLocation}
+              locations={locations}
+              activeTab={activeTab}
+              selectedLocation={selectedLocation}
+              onMarkerClick={handleMarkerClick}
+              onInfoWindowClose={handleInfoWindowClose}
+              containerStyle={containerStyle}
+            />
           </div>
           
           {/* Tab content sections */}
           <TabsContent value="bins" className="mt-0">
-            <h2 className="text-lg font-bold flex items-center gap-2 mb-2">
-              <Trash className="h-5 w-5" />
-              Nearby Bins
-            </h2>
-            <div className="space-y-2">
-              {filteredLocations('bin').map(bin => (
-                <div key={bin.id} className="border border-border dark:border-gray-700 rounded-lg p-3 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400">
-                      <Trash className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{bin.name}</h3>
-                      <p className="text-xs text-muted-foreground">{bin.location} • {bin.distance}</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="text-blue-500"
-                    onClick={() => {
-                      setSelectedLocation(bin);
-                      setMapCenter({ lat: bin.coordinates[1], lng: bin.coordinates[0] });
-                      setZoom(15);
-                    }}
-                  >
-                    <MapPin className="h-5 w-5" />
-                  </Button>
-                </div>
-              ))}
-              
-              {filteredLocations('bin').length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trash className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                  <p>No bins found</p>
-                </div>
-              )}
-            </div>
+            <LocationList
+              title="Nearby Bins"
+              locations={filteredLocations('bin')}
+              onSelectLocation={handleLocationSelect}
+              emptyMessage="No bins found"
+              icon={<Trash className="h-5 w-5" />}
+            />
           </TabsContent>
           
-          {/* Keep other tab content */}
+          {/* Other tab content */}
           <TabsContent value="dirty" className="mt-0">
-            <h2 className="text-lg font-bold mb-2">Dirty Areas</h2>
-            <div className="space-y-2">
-              {filteredLocations('dirty').map(area => (
-                <div key={area.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
-                  <h3 className="font-medium">{area.location}</h3>
-                  <p className="text-sm text-muted-foreground">{area.description}</p>
-                  {area.distance && <p className="text-xs text-muted-foreground mt-1">{area.distance}</p>}
-                </div>
-              ))}
-              
-              {filteredLocations('dirty').length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No dirty areas reported</p>
-                </div>
-              )}
-            </div>
+            <LocationList
+              title="Dirty Areas"
+              locations={filteredLocations('dirty')}
+              onSelectLocation={handleLocationSelect}
+              emptyMessage="No dirty areas reported"
+            />
           </TabsContent>
           
           <TabsContent value="report" className="mt-0">
-            <h2 className="text-lg font-bold mb-2">Trash Reports</h2>
-            <div className="space-y-2">
-              {filteredLocations('report').map(report => (
-                <div key={report.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
-                  <h3 className="font-medium">{report.location}</h3>
-                  <p className="text-sm text-muted-foreground">{report.description}</p>
-                  {report.distance && <p className="text-xs text-muted-foreground mt-1">{report.distance}</p>}
-                </div>
-              ))}
-              
-              {filteredLocations('report').length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No reports found</p>
-                </div>
-              )}
-            </div>
+            <LocationList
+              title="Trash Reports"
+              locations={filteredLocations('report')}
+              onSelectLocation={handleLocationSelect}
+              emptyMessage="No reports found"
+            />
           </TabsContent>
           
           <TabsContent value="event" className="mt-0">
-            <h2 className="text-lg font-bold mb-2">Cleanup Events</h2>
-            <div className="space-y-2">
-              {filteredLocations('event').map(event => (
-                <div key={event.id} className="border border-border dark:border-gray-700 rounded-lg p-3">
-                  <h3 className="font-medium">{event.name}</h3>
-                  <p className="text-sm">{event.location}</p>
-                  {event.distance && <p className="text-xs text-muted-foreground">{event.distance}</p>}
-                  {event.date && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(event.date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
-                </div>
-              ))}
-              
-              {filteredLocations('event').length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No events scheduled</p>
-                </div>
-              )}
-            </div>
+            <LocationList
+              title="Cleanup Events"
+              locations={filteredLocations('event')}
+              onSelectLocation={handleLocationSelect}
+              emptyMessage="No events scheduled"
+            />
           </TabsContent>
         </Tabs>
       </main>

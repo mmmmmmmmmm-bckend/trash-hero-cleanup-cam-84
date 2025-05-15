@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
@@ -13,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { avatars } from '@/components/AvatarSelector';
 import { Button } from "@/components/ui/button";
 import AppTutorial from '@/components/AppTutorial';
+import MapTutorial from '@/components/MapTutorial';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [topLeaders, setTopLeaders] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showMapTutorial, setShowMapTutorial] = useState(false);
   const [userStats, setUserStats] = useState({
     cleanups: 0,
     collected: 0,
@@ -46,6 +47,10 @@ const Index = () => {
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem('hasSeenAppTutorial', 'true');
+  };
+
+  const handleCloseMapTutorial = () => {
+    setShowMapTutorial(false);
   };
 
   const fetchUserData = async () => {
@@ -188,6 +193,12 @@ const Index = () => {
         onClose={handleCloseTutorial}
       />
 
+      {/* Show Map Tutorial */}
+      <MapTutorial
+        isOpen={showMapTutorial}
+        onClose={handleCloseMapTutorial}
+      />
+
       {/* Main content */}
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
         {loading ? (
@@ -216,7 +227,9 @@ const Index = () => {
               </button>
               
               <button 
-                onClick={() => navigate('/map')}
+                onClick={() => {
+                  navigate('/map');
+                }}
                 className="hero-button-secondary flex-col py-4"
               >
                 <MapPin className="w-6 h-6 mb-1" />
@@ -232,15 +245,23 @@ const Index = () => {
               </button>
             </div>
 
-            {/* Help button */}
-            <div className="flex justify-center">
+            {/* Help buttons */}
+            <div className="flex justify-center gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="flex items-center gap-1"
                 onClick={() => setShowTutorial(true)}
               >
-                Need help? View App Guide
+                App Guide
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setShowMapTutorial(true)}
+              >
+                Features Guide
               </Button>
             </div>
 
