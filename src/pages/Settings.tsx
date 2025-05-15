@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Bell, Lock, LogOut, Mail, Moon, Sun, Globe, Shield, HelpCircle, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import AvatarUploader from '@/components/AvatarUploader';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Settings = () => {
     full_name: '',
     phone_number: '',
     email: '',
+    avatar_url: null,
     notifications: true,
     locationSharing: true,
   });
@@ -52,6 +54,7 @@ const Settings = () => {
             full_name: data.full_name || '',
             phone_number: data.phone_number || '',
             email: user.email || '',
+            avatar_url: data.avatar_url,
             notifications: true,
             locationSharing: true,
           });
@@ -60,6 +63,7 @@ const Settings = () => {
             full_name: data.full_name || '',
             phone_number: data.phone_number || '',
             email: user.email || '',
+            avatar_url: data.avatar_url,
             notifications: true,
             locationSharing: true,
           });
@@ -71,6 +75,18 @@ const Settings = () => {
 
     fetchProfile();
   }, [user]);
+
+  const handleAvatarChange = (url: string) => {
+    setProfile(prev => ({
+      ...prev,
+      avatar_url: url
+    }));
+    
+    setEditedProfile(prev => ({
+      ...prev,
+      avatar_url: url
+    }));
+  };
 
   const handleToggleNotifications = () => {
     setProfile(prev => ({
@@ -147,18 +163,36 @@ const Settings = () => {
       <main className="max-w-md mx-auto p-4 space-y-6">
         {/* Profile section */}
         <section className="bg-card rounded-lg p-4 shadow-sm">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <img 
-                src="https://i.pravatar.cc/150?img=5" 
-                alt="User avatar" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{profile.full_name}</h2>
-              <p className="text-muted-foreground text-sm">@{profile.username}</p>
-            </div>
+          <div className="flex flex-col items-center mb-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <div className="cursor-pointer mb-2">
+                  <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    {profile.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt="User avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-lg font-bold">
+                        {profile.full_name?.substring(0, 1) || 'U'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogTitle className="text-center mb-4">Change Your Avatar</DialogTitle>
+                <AvatarUploader 
+                  currentAvatarUrl={profile.avatar_url}
+                  username={profile.username}
+                  onAvatarChange={handleAvatarChange}
+                />
+              </DialogContent>
+            </Dialog>
+            <h2 className="text-xl font-bold">{profile.full_name}</h2>
+            <p className="text-muted-foreground text-sm">@{profile.username}</p>
           </div>
           
           {isEditing ? (
