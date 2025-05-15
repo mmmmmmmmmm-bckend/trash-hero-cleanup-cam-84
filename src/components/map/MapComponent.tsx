@@ -1,8 +1,8 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { MapPin } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 // Mapbox token
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZXp6YXQiLCJhIjoiY2x0am9jYWNiMDhseTJrcGR0eDR4OWV5biJ9.F57X2J7v1VYeUSRQH2hEzQ";
@@ -51,28 +51,39 @@ const MapComponent = ({
   const markersRef = useRef<{ [key: number]: mapboxgl.Marker }>({});
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize map when component mounts
   useEffect(() => {
     if (!mapContainerRef.current) return;
     
-    // Initialize Mapbox
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    
-    mapRef.current = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [mapCenter.lng, mapCenter.lat],
-      zoom: zoom
-    });
+    try {
+      // Initialize Mapbox
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [mapCenter.lng, mapCenter.lat],
+        zoom: zoom
+      });
 
-    // Add navigation controls
-    mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      // Add navigation controls
+      mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    // Set up event listeners
-    mapRef.current.on('load', () => {
-      setMapLoaded(true);
-    });
+      // Set up event listeners
+      mapRef.current.on('load', () => {
+        setMapLoaded(true);
+      });
+      
+      mapRef.current.on('error', (e) => {
+        console.error('Map error:', e);
+        setError('Failed to load the map. Please try again later.');
+      });
+    } catch (err) {
+      console.error('Error initializing map:', err);
+      setError('Failed to initialize the map. Please check your internet connection.');
+    }
 
     return () => {
       if (mapRef.current) {
@@ -181,6 +192,17 @@ const MapComponent = ({
       popupRef.current.on('close', onInfoWindowClose);
     }
   }, [selectedLocation, mapLoaded]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+        <div className="text-center p-4">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!mapLoaded) {
     return (

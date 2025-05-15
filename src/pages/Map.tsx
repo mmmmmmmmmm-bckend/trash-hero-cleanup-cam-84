@@ -56,6 +56,7 @@ const Map = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
   const [zoom, setZoom] = useState(13);
   const [showMapTutorial, setShowMapTutorial] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   
   // Egyptian locations data (we'll filter these based on user location later)
   const [locations, setLocations] = useState<Location[]>([
@@ -382,14 +383,14 @@ const Map = () => {
     setZoom(15);
   };
 
-  // Check if map is ready
-  if (loadError) {
+  // Check if map has error and display appropriate message
+  if (mapError) {
     return (
       <div className="min-h-screen pb-16 bg-background dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-10 w-10 mx-auto text-red-500 mb-4" />
           <h2 className="text-xl font-bold mb-2">Error Loading Map</h2>
-          <p className="text-muted-foreground">There was an error loading the map. Please try again later.</p>
+          <p className="text-muted-foreground">There was an error loading the map: {mapError}</p>
         </div>
       </div>
     );
