@@ -65,11 +65,11 @@ export default {
 				},
 				// TrashHero custom colors
 				hero: {
-					primary: 'rgb(65, 119, 113)',     // Dark Teal/Green
+					primary: '#4CAF50',     // Green
 					secondary: '#81C784',   // Lighter green
 					accent: '#1E88E5',      // Blue
-					background: 'rgb(5, 31, 32)',  // Very Dark Green-Black
-					text: '#E0E0E0',        // Light text for dark background
+					background: '#F9FBF7',  // Light off-white with green tint
+					text: '#2E3A23',        // Dark green text
 					success: '#43A047',     // Success green
 					warning: '#F9A825',     // Warning yellow
 					danger: '#E53935',      // Danger red
