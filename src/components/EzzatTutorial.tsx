@@ -34,7 +34,7 @@ const EzzatTutorial: React.FC<EzzatTutorialProps> = ({ isOpen, onClose }) => {
       title: "Search for Locations",
       description: "Use the search bar at the top to find specific locations, bin types, or areas. The results will update automatically as you type.",
       tip: {
-        text: "Tip: You can search by location name or type (e.g. "Recycling")",
+        text: 'Tip: You can search by location name or type (e.g. "Recycling")',
         color: "primary"
       }
     },
@@ -50,7 +50,7 @@ const EzzatTutorial: React.FC<EzzatTutorialProps> = ({ isOpen, onClose }) => {
     {
       icon: <Plus className="h-10 w-10 text-green-600 mb-2" />,
       title: "Add New Bin",
-      description: "Add a new trash bin by clicking the "Add Bin" button. Your location will be used to place the bin on the map. Fill in the details and help others find it!",
+      description: 'Add a new trash bin by clicking the "Add Bin" button. Your location will be used to place the bin on the map. Fill in the details and help others find it!',
       tip: {
         text: "Contributing helps the community find proper waste disposal locations",
         color: "green-600"
