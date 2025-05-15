@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Award, Star, Clock, MapPin, Trash, Settings } from 'lucide-react';
+import { User, Award, Star, Clock, MapPin, Trash, Settings, Check } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
 
