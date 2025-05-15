@@ -1,25 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useJsApiLoader } from '@react-google-maps/api';
-import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/AuthContext';
-import GoogleMapComponent from '@/components/map/GoogleMapComponent';
+import MapComponent from '@/components/map/MapComponent';
 import LocationList from '@/components/map/LocationList';
 import AddBinDialog from '@/components/map/AddBinDialog';
 import MapTutorial from '@/components/MapTutorial';
-
-// Google Maps API Key
-const GOOGLE_MAPS_API_KEY = "AIzaSyDqrk3vgqzwRJZ6LMg9wNECzaeVaIvmOa4";
-
-// Define libraries for Google Maps
-const libraries = ['places'];
 
 // Define location type interface
 interface Location {
@@ -44,6 +38,8 @@ const Map = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate(); 
+  
+  // State management
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
@@ -60,12 +56,6 @@ const Map = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
   const [zoom, setZoom] = useState(13);
   const [showMapTutorial, setShowMapTutorial] = useState(false);
-  
-  // Setup Google Maps with libraries prop correctly formatted
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: libraries as any
-  });
   
   // Egyptian locations data (we'll filter these based on user location later)
   const [locations, setLocations] = useState<Location[]>([
@@ -495,8 +485,7 @@ const Map = () => {
           
           {/* Interactive Map */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
-            <GoogleMapComponent
-              isLoaded={isLoaded}
+            <MapComponent
               mapCenter={mapCenter}
               zoom={zoom}
               userLocation={userLocation}

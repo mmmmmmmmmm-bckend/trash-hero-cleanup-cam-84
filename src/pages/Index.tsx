@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
@@ -12,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { avatars } from '@/components/AvatarSelector';
 import { Button } from "@/components/ui/button";
 import AppTutorial from '@/components/AppTutorial';
-import MapTutorial from '@/components/MapTutorial';
+import FeatureGuide from '@/components/FeatureGuide';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [topLeaders, setTopLeaders] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [showMapTutorial, setShowMapTutorial] = useState(false);
+  const [showFeatureGuide, setShowFeatureGuide] = useState(false);
   const [userStats, setUserStats] = useState({
     cleanups: 0,
     collected: 0,
@@ -49,8 +50,8 @@ const Index = () => {
     localStorage.setItem('hasSeenAppTutorial', 'true');
   };
 
-  const handleCloseMapTutorial = () => {
-    setShowMapTutorial(false);
+  const handleCloseFeatureGuide = () => {
+    setShowFeatureGuide(false);
   };
 
   const fetchUserData = async () => {
@@ -193,10 +194,10 @@ const Index = () => {
         onClose={handleCloseTutorial}
       />
 
-      {/* Show Map Tutorial */}
-      <MapTutorial
-        isOpen={showMapTutorial}
-        onClose={handleCloseMapTutorial}
+      {/* Show Feature Guide */}
+      <FeatureGuide
+        isOpen={showFeatureGuide}
+        onClose={handleCloseFeatureGuide}
       />
 
       {/* Main content */}
@@ -259,7 +260,7 @@ const Index = () => {
                 variant="outline" 
                 size="sm" 
                 className="flex items-center gap-1"
-                onClick={() => setShowMapTutorial(true)}
+                onClick={() => setShowFeatureGuide(true)}
               >
                 Features Guide
               </Button>

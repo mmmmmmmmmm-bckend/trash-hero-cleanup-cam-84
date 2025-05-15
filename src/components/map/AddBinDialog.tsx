@@ -32,13 +32,18 @@ const AddBinDialog = ({
   onAddBin, 
   userLocation 
 }: AddBinDialogProps) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAddBin();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Trash Bin</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="name">Bin Name</Label>
             <Input 
@@ -79,11 +84,12 @@ const AddBinDialog = ({
               <span>Enable location to add a bin at your position</span>
             </div>
           )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onAddBin}>Add Bin</Button>
-        </DialogFooter>
+        
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit">Add Bin</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
