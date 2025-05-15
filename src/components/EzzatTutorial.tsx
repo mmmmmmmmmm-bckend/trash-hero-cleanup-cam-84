@@ -9,9 +9,63 @@ interface EzzatTutorialProps {
   onClose: () => void;
 }
 
+interface TutorialStep {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  tip?: {
+    text: string;
+    color: string;
+  };
+}
+
 const EzzatTutorial: React.FC<EzzatTutorialProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
+
+  const tutorialSteps: TutorialStep[] = [
+    {
+      icon: <MapPin className="h-12 w-12 text-primary" />,
+      title: "Welcome to the Community Map!",
+      description: "Let Ezzat guide you through how to use this interactive map to find and add trash bins, report dirty areas, and join cleanup events."
+    },
+    {
+      icon: <Search className="h-10 w-10 text-primary mb-2" />,
+      title: "Search for Locations",
+      description: "Use the search bar at the top to find specific locations, bin types, or areas. The results will update automatically as you type.",
+      tip: {
+        text: "Tip: You can search by location name or type (e.g. "Recycling")",
+        color: "primary"
+      }
+    },
+    {
+      icon: <Filter className="h-10 w-10 text-primary mb-2" />,
+      title: "Filter by Categories",
+      description: "Use the tabs to switch between different categories: Trash Bins, Dirty Areas, Trash Reports, and Cleanup Events.",
+      tip: {
+        text: "Each category is color-coded on the map for easy identification",
+        color: "primary"
+      }
+    },
+    {
+      icon: <Plus className="h-10 w-10 text-green-600 mb-2" />,
+      title: "Add New Bin",
+      description: "Add a new trash bin by clicking the "Add Bin" button. Your location will be used to place the bin on the map. Fill in the details and help others find it!",
+      tip: {
+        text: "Contributing helps the community find proper waste disposal locations",
+        color: "green-600"
+      }
+    },
+    {
+      icon: <MapPin className="h-10 w-10 text-primary mb-2" />,
+      title: "Explore the Map",
+      description: "Click on any marker to see its details. The map will show your current location (if allowed) and calculate distances to each bin or event.",
+      tip: {
+        text: "You can always access this guide by clicking the Help button",
+        color: "primary"
+      }
+    }
+  ];
 
   const handleNext = () => {
     if (step < totalSteps) {
@@ -25,6 +79,8 @@ const EzzatTutorial: React.FC<EzzatTutorialProps> = ({ isOpen, onClose }) => {
     setStep(1);
     onClose();
   };
+
+  const currentStep = tutorialSteps[step - 1];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -45,77 +101,20 @@ const EzzatTutorial: React.FC<EzzatTutorialProps> = ({ isOpen, onClose }) => {
         </DialogHeader>
 
         <div className="py-4">
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <MapPin className="h-12 w-12 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold text-center">Welcome to the Community Map!</h3>
-              <p className="text-muted-foreground text-center">
-                Let Ezzat guide you through how to use this interactive map to find and add trash bins, report dirty areas, and join cleanup events.
-              </p>
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              {currentStep.icon}
             </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <Search className="h-10 w-10 text-primary mb-2" />
+            <h3 className="text-lg font-semibold text-center">{currentStep.title}</h3>
+            <p className="text-muted-foreground text-center">
+              {currentStep.description}
+            </p>
+            {currentStep.tip && (
+              <div className={`border border-dashed border-${currentStep.tip.color}/50 rounded-lg p-3 bg-${currentStep.tip.color}/5`}>
+                <p className={`text-xs text-${currentStep.tip.color}`}>{currentStep.tip.text}</p>
               </div>
-              <h3 className="text-lg font-semibold">Search for Locations</h3>
-              <p className="text-muted-foreground">
-                Use the search bar at the top to find specific locations, bin types, or areas. The results will update automatically as you type.
-              </p>
-              <div className="border border-dashed border-primary/50 rounded-lg p-3 bg-primary/5">
-                <p className="text-xs text-primary">Tip: You can search by location name or type (e.g. "Recycling")</p>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <Filter className="h-10 w-10 text-primary mb-2" />
-              </div>
-              <h3 className="text-lg font-semibold">Filter by Categories</h3>
-              <p className="text-muted-foreground">
-                Use the tabs to switch between different categories: Trash Bins, Dirty Areas, Trash Reports, and Cleanup Events.
-              </p>
-              <div className="border border-dashed border-primary/50 rounded-lg p-3 bg-primary/5">
-                <p className="text-xs text-primary">Each category is color-coded on the map for easy identification</p>
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <Plus className="h-10 w-10 text-green-600 mb-2" />
-              </div>
-              <h3 className="text-lg font-semibold">Add New Bin</h3>
-              <p className="text-muted-foreground">
-                Add a new trash bin by clicking the "Add Bin" button. Your location will be used to place the bin on the map. Fill in the details and help others find it!
-              </p>
-              <div className="border border-dashed border-green-600/50 rounded-lg p-3 bg-green-600/5">
-                <p className="text-xs text-green-600">Contributing helps the community find proper waste disposal locations</p>
-              </div>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <MapPin className="h-10 w-10 text-primary mb-2" />
-              </div>
-              <h3 className="text-lg font-semibold">Explore the Map</h3>
-              <p className="text-muted-foreground">
-                Click on any marker to see its details. The map will show your current location (if allowed) and calculate distances to each bin or event.
-              </p>
-              <div className="border border-dashed border-primary/50 rounded-lg p-3 bg-primary/5">
-                <p className="text-xs text-primary">You can always access this guide by clicking the Help button</p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <DialogFooter className="flex sm:justify-between">
