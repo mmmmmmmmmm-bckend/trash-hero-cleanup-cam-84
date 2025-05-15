@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Award, Clock, Check, User, Users } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -8,6 +7,7 @@ import Header from '../components/Header';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { avatars } from '@/components/AvatarSelector';
 
 // Mock challenge data
 const activeChallenges = [
@@ -62,6 +62,7 @@ const Challenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [userAvatar, setUserAvatar] = useState('');
   
   useEffect(() => {
     if (user) {
@@ -74,13 +75,14 @@ const Challenges = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('total_points')
+        .select('total_points, avatar_url')
         .eq('id', user.id)
         .single();
         
       if (error) throw error;
       if (data) {
         setUserPoints(data.total_points || 0);
+        setUserAvatar(data.avatar_url || 'avatar1');
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -153,9 +155,9 @@ const Challenges = () => {
   // Helper function to format leaderboard data
   const formatLeaderboardData = (data) => {
     return data.map((user, index) => {
-      const avatarSrc = user.avatar_url 
-        ? (avatars.find(a => a.id === user.avatar_url)?.src || `https://i.pravatar.cc/150?img=${index + 1}`) 
-        : `https://i.pravatar.cc/150?img=${index + 1}`;
+      // Find the correct avatar from the avatars array
+      const avatarObj = avatars.find(a => a.id === user.avatar_url);
+      const avatarSrc = avatarObj ? avatarObj.src : `https://i.pravatar.cc/150?img=${index + 1}`;
       
       return {
         id: user.id,
@@ -167,17 +169,11 @@ const Challenges = () => {
     });
   };
   
-  // Import avatars
-  const avatars = [
-    { id: 'avatar1', name: 'Cairo Style', src: 'https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=200&q=80' },
-    { id: 'avatar2', name: 'Alexandria', src: 'https://images.unsplash.com/photo-1595503240812-7286dafaddc1?w=200&q=80' },
-    { id: 'avatar3', name: 'Nile Explorer', src: 'https://images.unsplash.com/photo-1578927312881-55555eb2eb7f?w=200&q=80' },
-    { id: 'avatar4', name: 'Desert Nomad', src: 'https://images.unsplash.com/photo-1591014141178-02091240f1c6?w=200&q=80' },
-    { id: 'avatar5', name: 'Red Sea', src: 'https://images.unsplash.com/photo-1566677379313-461196b3e5ad?w=200&q=80' },
-    { id: 'avatar6', name: 'Oasis', src: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=200&q=80' },
-    { id: 'avatar7', name: 'Sphinx', src: 'https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=200&q=80' },
-    { id: 'avatar8', name: 'Pyramid', src: 'https://images.unsplash.com/photo-1668229550805-c3e2f121c01e?w=200&q=80' }
-  ];
+  // Get user avatar URL
+  const getUserAvatarUrl = () => {
+    const avatarObj = avatars.find(a => a.id === userAvatar);
+    return avatarObj ? avatarObj.src : 'https://i.pravatar.cc/150?img=5';
+  };
   
   return (
     <div className="min-h-screen pb-16 bg-background">
@@ -365,7 +361,7 @@ const Challenges = () => {
                 </span>
                 <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <img 
-                    src={avatars.find(a => a.id === user?.user_metadata?.avatar_url || 'avatar1')?.src || 'https://i.pravatar.cc/150?img=5'} 
+                    src={getUserAvatarUrl()} 
                     alt="Your avatar" 
                     className="w-full h-full object-cover" 
                   />

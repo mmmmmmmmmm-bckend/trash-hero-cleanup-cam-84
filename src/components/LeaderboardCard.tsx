@@ -30,6 +30,7 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
   useEffect(() => {
     // Don't fetch if entries are provided
     if (initialEntries) {
+      setEntries(initialEntries);
       return;
     }
     
@@ -57,18 +58,11 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
         
         if (data) {
           const leaderboardData = data.map((user, index) => {
-            // Find the avatar URL based on the avatar_url ID
-            let avatarSrc;
-            if (user.avatar_url) {
-              const matchedAvatar = avatars.find(a => a.id === user.avatar_url);
-              if (matchedAvatar) {
-                avatarSrc = matchedAvatar.src;
-              } else {
-                avatarSrc = `https://i.pravatar.cc/150?img=${index + 1}`;
-              }
-            } else {
-              avatarSrc = `https://i.pravatar.cc/150?img=${index + 1}`;
-            }
+            // Find the correct avatar from the avatars array
+            const avatarObj = avatars.find(a => a.id === user.avatar_url);
+            const avatarSrc = avatarObj 
+              ? avatarObj.src 
+              : `https://i.pravatar.cc/150?img=${index + 1}`;
               
             return {
               id: user.id,

@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Globe, Trash, User, MapPin, Search, Filter, Plus, AlertCircle } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { Trash, User, MapPin, Search, Filter, Plus, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -16,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoidHJhc2hoZXJvYXBwIiwiYSI6ImNscmExMndvMTBhYjQyanA1ZXBjYjRyd3MifQ.aR1T6g2GolBsoEKQZb76iQ";
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = "AIzaSyDqrk3vgqzwRJZ6LMg9wNECzaeVaIvmOa4";
 
 // Define location type interface
 interface Location {
@@ -29,14 +28,17 @@ interface Location {
   coordinates: number[];
   description?: string;
   date?: string;
+  selected?: boolean;
 }
+
+const containerStyle = {
+  width: '100%',
+  height: '100%'
+};
 
 const Map = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('bins');
@@ -46,13 +48,21 @@ const Map = () => {
     type: 'General Bin',
     location: ''
   });
-  const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const [locationLoading, setLocationLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [mapCenter, setMapCenter] = useState({ lat: 30.0444, lng: 31.2357 }); // Default to Cairo, Egypt
+  const [zoom, setZoom] = useState(13);
+  
+  // Setup Google Maps
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: ["places"]
+  });
   
   // Egyptian locations data (we'll filter these based on user location later)
-  const egyptLocations: Location[] = [
+  const [locations, setLocations] = useState<Location[]>([
     {
       id: 1,
       name: 'Recycling Bin',
@@ -193,45 +203,11 @@ const Map = () => {
       date: '2025-06-22T08:00:00',
       coordinates: [34.9000, 25.0667]
     }
-  ];
-  
-  // Request location permission and initialize map
-  useEffect(() => {
-    if (!mapContainer.current) return;
-    if (map.current) return; // Map already initialized
-    
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    
-    // First create map with default center
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [31.2357, 30.0444], // Default center (Egypt)
-      zoom: 5
-    });
-    
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    
-    // Check if geolocation is supported
-    if (!navigator.geolocation) {
-      toast({
-        title: "Location Not Available",
-        description: "Your browser doesn't support location services",
-        variant: "destructive"
-      });
-      return;
-    }
+  ]);
 
-    // Request location permission
+  // Request location permission
+  useEffect(() => {
     requestLocationPermission();
-    
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
   }, []);
 
   // Request location permission
@@ -242,34 +218,13 @@ const Map = () => {
       // Success callback
       (position) => {
         const { latitude, longitude } = position.coords;
-        setUserLocation([longitude, latitude]);
+        setUserLocation({ lat: latitude, lng: longitude });
         setLocationPermission('granted');
         setLocationLoading(false);
+        setMapCenter({ lat: latitude, lng: longitude });
         
-        if (map.current) {
-          map.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 14,
-            essential: true
-          });
-          
-          // Add user marker
-          if (userMarker.current) {
-            userMarker.current.setLngLat([longitude, latitude]);
-          } else {
-            // Create marker element
-            const el = document.createElement('div');
-            el.className = 'user-marker';
-            el.innerHTML = '<div class="w-8 h-8 bg-blue-500 border-4 border-white rounded-full pulse-animation flex items-center justify-center"><div class="w-2 h-2 bg-white rounded-full"></div></div>';
-            
-            userMarker.current = new mapboxgl.Marker(el)
-              .setLngLat([longitude, latitude])
-              .addTo(map.current);
-          }
-          
-          // Add markers after getting user location
-          addMarkersToMap();
-        }
+        // Update distances after getting user location
+        updateDistances(latitude, longitude);
       },
       // Error callback
       (error) => {
@@ -282,11 +237,6 @@ const Map = () => {
           description: "Please enable location access to see nearby bins and cleanups.",
           variant: "destructive"
         });
-        
-        // Still add markers even if location is denied
-        if (map.current) {
-          addMarkersToMap();
-        }
       },
       // Options
       {
@@ -318,97 +268,30 @@ const Map = () => {
     return `${distance.toFixed(1)}km away`;
   };
   
-  // Add markers to map based on filtered locations
-  const addMarkersToMap = () => {
-    if (!map.current) return;
-    
-    // Remove existing markers
-    markers.forEach(marker => marker.remove());
-    const newMarkers: mapboxgl.Marker[] = [];
-    
-    // Filter locations based on tab and search
-    let locations = egyptLocations.filter(loc => {
-      // Filter by tab type
-      if (activeTab !== 'all') {
-        if (activeTab === 'bins' && loc.type !== 'bin') return false;
-        if (activeTab === 'dirty' && loc.type !== 'dirty') return false;
-        if (activeTab === 'reports' && loc.type !== 'report') return false;
-        if (activeTab === 'events' && loc.type !== 'event') return false;
-      }
+  // Update distances when user location changes
+  const updateDistances = (latitude: number, longitude: number) => {
+    const updatedLocations = locations.map(loc => {
+      const distance = calculateDistance(
+        loc.coordinates[0], loc.coordinates[1], 
+        longitude, latitude
+      );
       
-      // Filter by search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return loc.name.toLowerCase().includes(query) || 
-               loc.location.toLowerCase().includes(query);
-      }
-      
-      return true;
+      return {
+        ...loc,
+        distance: formatDistance(distance),
+        distanceValue: distance
+      };
     });
     
-    // Calculate distances if user location is available
-    if (userLocation) {
-      locations = locations.map(loc => {
-        const distance = calculateDistance(
-          userLocation[0], userLocation[1], 
-          loc.coordinates[0], loc.coordinates[1]
-        );
-        return {
-          ...loc,
-          distance: formatDistance(distance),
-          distanceValue: distance
-        };
-      });
-      
-      // Sort by distance
-      locations.sort((a, b) => (a.distanceValue || 0) - (b.distanceValue || 0));
-    }
-    
-    // Add new markers
-    locations.forEach(loc => {
-      // Create marker element
-      const el = document.createElement('div');
-      el.className = 'marker';
-      
-      // Style based on type
-      if (loc.type === 'bin') {
-        el.innerHTML = '<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></div>';
-      } else if (loc.type === 'dirty') {
-        el.innerHTML = '<div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>';
-      } else if (loc.type === 'report') {
-        el.innerHTML = '<div class="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>';
-      } else if (loc.type === 'event') {
-        el.innerHTML = '<div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>';
-      }
-      
-      // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div class="p-2">
-          <strong>${loc.name}</strong>
-          <p class="text-sm">${loc.location}</p>
-          ${loc.description ? `<p class="text-xs mt-1">${loc.description}</p>` : ''}
-          ${loc.distance ? `<p class="text-xs text-gray-500">${loc.distance}</p>` : ''}
-        </div>
-      `);
-      
-      // Add marker to map
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([loc.coordinates[0], loc.coordinates[1]])
-        .setPopup(popup)
-        .addTo(map.current!);
-      
-      newMarkers.push(marker);
+    // Sort by distance
+    updatedLocations.sort((a, b) => {
+      const aValue = a.distanceValue ?? Number.MAX_VALUE;
+      const bValue = b.distanceValue ?? Number.MAX_VALUE;
+      return aValue - bValue;
     });
     
-    setMarkers(newMarkers);
+    setLocations(updatedLocations);
   };
-  
-  // Update markers when search query, filter, tab changes, or location changes
-  useEffect(() => {
-    if (map.current) {
-      addMarkersToMap();
-    }
-  }, [searchQuery, filterType, activeTab, userLocation]);
   
   // Handle adding a new bin
   const handleAddBin = async () => {
@@ -432,7 +315,19 @@ const Map = () => {
 
     try {
       // In a real app, we would save to Supabase here
-      // For now, we'll just show a success toast
+      const newId = locations.length + 1;
+      const newLocation: Location = {
+        id: newId,
+        name: newBin.name,
+        type: 'bin',
+        location: newBin.location,
+        coordinates: [userLocation.lng, userLocation.lat],
+        distance: '0m away',
+        distanceValue: 0
+      };
+      
+      setLocations([newLocation, ...locations]);
+      
       toast({
         title: "Bin Added",
         description: `${newBin.type} has been added to ${newBin.location}`,
@@ -444,26 +339,7 @@ const Map = () => {
         type: 'General Bin',
         location: ''
       });
-
-      // Add the new bin to the map immediately
-      if (map.current && userLocation) {
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.innerHTML = '<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></div>';
-        
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat(userLocation)
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div class="p-2">
-              <strong>${newBin.name}</strong>
-              <p class="text-sm">${newBin.location}</p>
-              <p class="text-xs text-gray-500">Just added</p>
-            </div>
-          `))
-          .addTo(map.current);
-        
-        setMarkers([...markers, marker]);
-      }
+      
     } catch (error) {
       console.error('Error adding bin:', error);
       toast({
@@ -475,7 +351,7 @@ const Map = () => {
   };
   
   const filteredLocations = (type: string): Location[] => {
-    let filtered = egyptLocations;
+    let filtered = locations;
     
     // Apply search filter if exists
     if (searchQuery) {
@@ -490,30 +366,62 @@ const Map = () => {
       filtered = filtered.filter(loc => loc.type === type);
     }
 
-    // Calculate and add distance if user location is available
-    if (userLocation) {
-      filtered = filtered.map(loc => {
-        const distance = calculateDistance(
-          userLocation[0], userLocation[1], 
-          loc.coordinates[0], loc.coordinates[1]
-        );
-        return {
-          ...loc,
-          distance: formatDistance(distance),
-          distanceValue: distance
-        };
-      });
-      
-      // Sort by distance
-      filtered.sort((a, b) => {
-        const aValue = a.distanceValue ?? Number.MAX_VALUE;
-        const bValue = b.distanceValue ?? Number.MAX_VALUE;
-        return aValue - bValue;
-      });
-    }
-    
     return filtered;
   };
+
+  // Handle marker click
+  const handleMarkerClick = (location: Location) => {
+    setSelectedLocation(location);
+  };
+
+  // Render map markers based on filtered locations
+  const renderMarkers = () => {
+    const filtered = [...filteredLocations(activeTab === 'all' ? 'all' : activeTab)];
+    
+    return filtered.map(location => (
+      <MarkerF
+        key={location.id}
+        position={{
+          lat: location.coordinates[1],
+          lng: location.coordinates[0]
+        }}
+        onClick={() => handleMarkerClick(location)}
+        icon={{
+          url: getMarkerIconByType(location.type),
+          scaledSize: new window.google.maps.Size(30, 30)
+        }}
+      />
+    ));
+  };
+
+  // Get marker icon based on location type
+  const getMarkerIconByType = (type: string) => {
+    switch(type) {
+      case 'bin':
+        return 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
+      case 'dirty':
+        return 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
+      case 'report':
+        return 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png';
+      case 'event':
+        return 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+      default:
+        return 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
+    }
+  };
+
+  // Check if map is ready
+  if (loadError) {
+    return (
+      <div className="min-h-screen pb-16 bg-background dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-10 w-10 mx-auto text-red-500 mb-4" />
+          <h2 className="text-xl font-bold mb-2">Error Loading Map</h2>
+          <p className="text-muted-foreground">There was an error loading the map. Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-16 bg-background dark:bg-gray-900">
@@ -627,15 +535,66 @@ const Map = () => {
           
           {/* Interactive Map */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
-            <div ref={mapContainer} className="w-full h-full absolute" />
-            {locationLoading && (
+            {isLoaded ? (
+              <GoogleMap
+                mapContainerStyle={containerStyle}
+                center={mapCenter}
+                zoom={zoom}
+                options={{
+                  zoomControl: true,
+                  mapTypeControl: false,
+                  streetViewControl: false,
+                  fullscreenControl: false
+                }}
+              >
+                {/* User Location Marker */}
+                {userLocation && (
+                  <MarkerF
+                    position={userLocation}
+                    icon={{
+                      path: window.google.maps.SymbolPath.CIRCLE,
+                      scale: 7,
+                      fillColor: "#4285F4",
+                      fillOpacity: 1,
+                      strokeColor: "#ffffff",
+                      strokeWeight: 2,
+                    }}
+                  />
+                )}
+
+                {/* Location Markers */}
+                {renderMarkers()}
+
+                {/* Info Window for selected location */}
+                {selectedLocation && (
+                  <InfoWindowF
+                    position={{
+                      lat: selectedLocation.coordinates[1],
+                      lng: selectedLocation.coordinates[0]
+                    }}
+                    onCloseClick={() => setSelectedLocation(null)}
+                  >
+                    <div className="p-2 max-w-[200px]">
+                      <h3 className="font-medium text-sm">{selectedLocation.name}</h3>
+                      <p className="text-xs text-gray-600">{selectedLocation.location}</p>
+                      {selectedLocation.description && (
+                        <p className="text-xs mt-1">{selectedLocation.description}</p>
+                      )}
+                      {selectedLocation.distance && (
+                        <p className="text-xs text-blue-600 mt-1">{selectedLocation.distance}</p>
+                      )}
+                    </div>
+                  </InfoWindowF>
+                )}
+              </GoogleMap>
+            ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
           </div>
           
-          {/* Content for each tab */}
+          {/* Tab content sections */}
           <TabsContent value="bins" className="mt-0">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-2">
               <Trash className="h-5 w-5" />
@@ -658,13 +617,9 @@ const Map = () => {
                     size="icon" 
                     className="text-blue-500"
                     onClick={() => {
-                      if (map.current) {
-                        map.current.flyTo({
-                          center: [bin.coordinates[0], bin.coordinates[1]],
-                          zoom: 14,
-                          essential: true
-                        });
-                      }
+                      setSelectedLocation(bin);
+                      setMapCenter({ lat: bin.coordinates[1], lng: bin.coordinates[0] });
+                      setZoom(15);
                     }}
                   >
                     <MapPin className="h-5 w-5" />
@@ -681,7 +636,7 @@ const Map = () => {
             </div>
           </TabsContent>
           
-          {/* Keep the rest of the tab content */}
+          {/* Keep other tab content */}
           <TabsContent value="dirty" className="mt-0">
             <h2 className="text-lg font-bold mb-2">Dirty Areas</h2>
             <div className="space-y-2">
@@ -728,16 +683,18 @@ const Map = () => {
                   <h3 className="font-medium">{event.name}</h3>
                   <p className="text-sm">{event.location}</p>
                   {event.distance && <p className="text-xs text-muted-foreground">{event.distance}</p>}
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(event.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
+                  {event.date && (
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(event.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
                 </div>
               ))}
@@ -752,12 +709,8 @@ const Map = () => {
         </Tabs>
       </main>
       
-      {/* Add CSS for the user location marker pulse animation */}
+      {/* Add CSS for animations */}
       <style>{`
-        .pulse-animation {
-          animation: pulse 2s infinite;
-        }
-        
         @keyframes pulse {
           0% {
             box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
