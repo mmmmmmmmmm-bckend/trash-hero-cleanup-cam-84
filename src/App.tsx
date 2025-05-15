@@ -12,6 +12,7 @@ import Map from "./pages/Map";
 import Challenges from "./pages/Challenges";
 import Points from "./pages/Points";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/points" element={<Points />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

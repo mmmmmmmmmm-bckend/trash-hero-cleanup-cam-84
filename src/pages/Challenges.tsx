@@ -70,7 +70,7 @@ const Challenges = () => {
   
   return (
     <div className="min-h-screen pb-16 bg-background">
-      <Header title="Challenges & Leaderboards" />
+      <Header title="Challenges & Leaderboards" showBack={true} />
       
       {/* Tabs */}
       <div className="sticky top-14 z-10 bg-background border-b border-border">

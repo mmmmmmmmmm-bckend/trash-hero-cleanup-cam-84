@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Award, Star, Clock, MapPin, Trash, Settings, Check } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
@@ -40,19 +39,35 @@ const stats = {
 };
 
 const Profile = () => {
+  const [headerCompact, setHeaderCompact] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setHeaderCompact(scrollPosition > 120);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen pb-16 bg-background">
-      <Header title="Profile" />
+      <Header title="Profile" showBack={true} />
       
       {/* Profile header - made movable/scrollable */}
-      <div className="bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white pt-6 pb-16 relative">
+      <div className={`bg-gradient-to-r from-primary to-accent dark:from-sidebar-primary dark:to-accent/80 text-white pt-6 ${
+        headerCompact ? 'pb-6' : 'pb-16'
+      } transition-all duration-300 relative`}>
         <div className="absolute top-4 right-4">
           <button className="p-2 bg-white/10 rounded-full">
             <Settings className="w-5 h-5" />
           </button>
         </div>
         
-        <div className="flex flex-col items-center">
+        <div className={`flex flex-col items-center transition-all duration-300 ${
+          headerCompact ? 'transform scale-90' : ''
+        }`}>
           <div className="w-20 h-20 bg-white rounded-full overflow-hidden mb-3">
             <img 
               src="https://i.pravatar.cc/150?img=5" 
@@ -69,7 +84,9 @@ const Profile = () => {
       </div>
       
       {/* Stats cards */}
-      <div className="max-w-md mx-auto px-4 -mt-10">
+      <div className={`max-w-md mx-auto px-4 transition-all duration-300 ${
+        headerCompact ? '-mt-6' : '-mt-10'
+      }`}>
         <div className="grid grid-cols-2 gap-4">
           <div className="hero-card animate-scale-in">
             <div className="flex gap-3 items-center">
@@ -98,7 +115,7 @@ const Profile = () => {
           <div className="hero-card animate-scale-in" style={{ animationDelay: '100ms' }}>
             <div className="flex gap-3 items-center">
               <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                <Award className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                <Award className="w-6 h-6 text-amber-500 dark:text-amber-400" />
               </div>
               <div>
                 <h3 className="text-muted-foreground text-sm">Rank</h3>

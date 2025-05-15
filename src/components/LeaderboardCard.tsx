@@ -17,21 +17,21 @@ interface LeaderboardCardProps {
 const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, entries }) => {
   return (
     <div className="hero-card w-full">
-      <h3 className="text-lg font-bold text-hero-text mb-4">{title}</h3>
+      <h3 className="text-lg font-bold mb-4">{title}</h3>
       <ul className="space-y-3">
         {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+          <li key={entry.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
             <span className="font-bold text-lg w-6 text-center">
               {entry.rank === 1 && '🥇'}
               {entry.rank === 2 && '🥈'}
               {entry.rank === 3 && '🥉'}
               {entry.rank > 3 && entry.rank}
             </span>
-            <div className="w-8 h-8 bg-gray-200 rounded-full overflow-hidden">
+            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <img src={entry.avatar} alt={entry.name} className="w-full h-full object-cover" />
             </div>
             <span className="flex-1 font-medium truncate">{entry.name}</span>
-            <span className="font-bold text-hero-primary">{entry.points}</span>
+            <span className="font-bold text-primary">{entry.points}</span>
           </li>
         ))}
       </ul>
