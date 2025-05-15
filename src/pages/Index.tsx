@@ -9,6 +9,8 @@ import Header from '../components/Header';
 import LeaderboardCard from '../components/LeaderboardCard';
 import PointsBadge from '../components/PointsBadge';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { avatars } from '@/components/AvatarSelector';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -89,18 +91,32 @@ const Index = () => {
       }
       
       // Format for leaderboard
-      const formattedLeaders = data.map((user, index) => ({
-        id: user.id,
-        name: user.full_name || user.username || `User ${index + 1}`,
-        avatar: user.avatar_url || `https://i.pravatar.cc/150?img=${index + 1}`,
-        points: user.total_points || 0,
-        rank: index + 1
-      }));
+      const formattedLeaders = data.map((user, index) => {
+        // Find the avatar URL based on the avatar_url ID
+        const avatarSrc = user.avatar_url ? 
+          (avatars.find(a => a.id === user.avatar_url)?.src || `https://i.pravatar.cc/150?img=${index + 1}`) : 
+          `https://i.pravatar.cc/150?img=${index + 1}`;
+          
+        return {
+          id: user.id,
+          name: user.full_name || user.username || `User ${index + 1}`,
+          avatar: avatarSrc,
+          points: user.total_points || 0,
+          rank: index + 1
+        };
+      });
       
       setTopLeaders(formattedLeaders);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     }
+  };
+
+  // Get avatar source based on avatar_url
+  const getAvatarSrc = () => {
+    if (!userProfile?.avatar_url) return "https://i.pravatar.cc/150?img=5";
+    const avatar = avatars.find(a => a.id === userProfile.avatar_url);
+    return avatar?.src || "https://i.pravatar.cc/150?img=5";
   };
 
   return (
@@ -120,20 +136,29 @@ const Index = () => {
                   <Star className="w-5 h-5" />
                   <span className="text-sm opacity-90">points</span>
                 </div>
+                {userProfile && (
+                  <p className="text-sm mt-1 opacity-90">
+                    {userProfile.full_name || userProfile.username || "User"}
+                  </p>
+                )}
               </div>
               <div className="bg-white/20 p-2 rounded-full">
                 <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                  {userProfile?.avatar_url ? (
-                    <img 
-                      src={userProfile.avatar_url} 
-                      alt="User avatar" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://i.pravatar.cc/150?img=5";
-                      }}
-                    />
+                  {userProfile ? (
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage 
+                        src={getAvatarSrc()} 
+                        alt={userProfile.full_name || "User"} 
+                      />
+                      <AvatarFallback>
+                        {(userProfile.full_name || userProfile.username || "U").substring(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                   ) : (
-                    <img src="https://i.pravatar.cc/150?img=5" alt="User avatar" className="w-full h-full object-cover" />
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src="https://i.pravatar.cc/150?img=5" alt="User avatar" />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
               </div>

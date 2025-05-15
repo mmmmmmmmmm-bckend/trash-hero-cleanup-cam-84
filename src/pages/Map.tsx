@@ -1,6 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Globe, Trash, User, MapPin, Search, Filter, Plus } from 'lucide-react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { supabase } from '@/integrations/supabase/client';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import { Button } from "@/components/ui/button";
@@ -8,10 +10,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const MAPBOX_TOKEN = "pk.eyJ1IjoidHJhc2hoZXJvYXBwIiwiYSI6ImNscmExMndvMTBhYjQyanA1ZXBjYjRyd3MifQ.aR1T6g2GolBsoEKQZb76iQ";
 
 const Map = () => {
+  const { toast } = useToast();
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [activeTab, setActiveTab] = useState('bins');
+  const [addingBin, setAddingBin] = useState(false);
+  const [newBin, setNewBin] = useState({
+    name: '',
+    type: 'General Bin',
+    location: ''
+  });
+  const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
   
   // Egyptian locations data - expanded with more places
   const egyptLocations = [
@@ -157,6 +176,134 @@ const Map = () => {
     }
   ];
   
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    if (map.current) return; // Map already initialized
+    
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [31.2357, 30.0444], // Center on Egypt
+      zoom: 5
+    });
+    
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    
+    // Add markers when map loads
+    map.current.on('load', () => {
+      addMarkersToMap();
+    });
+    
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+  
+  // Add markers to map based on filtered locations
+  const addMarkersToMap = () => {
+    if (!map.current) return;
+    
+    // Remove existing markers
+    markers.forEach(marker => marker.remove());
+    const newMarkers: mapboxgl.Marker[] = [];
+    
+    // Filter locations based on tab and search
+    const locations = egyptLocations.filter(loc => {
+      // Filter by tab type
+      if (activeTab !== 'all') {
+        if (activeTab === 'bins' && loc.type !== 'bin') return false;
+        if (activeTab === 'dirty' && loc.type !== 'dirty') return false;
+        if (activeTab === 'reports' && loc.type !== 'report') return false;
+        if (activeTab === 'events' && loc.type !== 'event') return false;
+      }
+      
+      // Filter by search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return loc.name.toLowerCase().includes(query) || 
+               loc.location.toLowerCase().includes(query);
+      }
+      
+      return true;
+    });
+    
+    // Add new markers
+    locations.forEach(loc => {
+      // Create marker element
+      const el = document.createElement('div');
+      el.className = 'marker';
+      
+      // Style based on type
+      if (loc.type === 'bin') {
+        el.innerHTML = '<div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></div>';
+      } else if (loc.type === 'dirty') {
+        el.innerHTML = '<div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>';
+      } else if (loc.type === 'report') {
+        el.innerHTML = '<div class="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>';
+      } else if (loc.type === 'event') {
+        el.innerHTML = '<div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>';
+      }
+      
+      // Create popup
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div class="p-2">
+          <strong>${loc.name}</strong>
+          <p class="text-sm">${loc.location}</p>
+          ${loc.description ? `<p class="text-xs mt-1">${loc.description}</p>` : ''}
+          ${loc.distance ? `<p class="text-xs text-gray-500">${loc.distance}</p>` : ''}
+        </div>
+      `);
+      
+      // Add marker to map
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([loc.coordinates[0], loc.coordinates[1]])
+        .setPopup(popup)
+        .addTo(map.current!);
+      
+      newMarkers.push(marker);
+    });
+    
+    setMarkers(newMarkers);
+  };
+  
+  // Update markers when search query, filter, or tab changes
+  useEffect(() => {
+    if (map.current) {
+      addMarkersToMap();
+    }
+  }, [searchQuery, filterType, activeTab]);
+  
+  const handleAddBin = () => {
+    if (!newBin.name || !newBin.type || !newBin.location) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // In a real app, we would save to Supabase here
+    toast({
+      title: "Bin Added",
+      description: `${newBin.type} has been added to ${newBin.location}`,
+    });
+    
+    setAddingBin(false);
+    setNewBin({
+      name: '',
+      type: 'General Bin',
+      location: ''
+    });
+  };
+  
   const filteredLocations = (type) => {
     let filtered = egyptLocations;
     
@@ -193,7 +340,7 @@ const Map = () => {
         </div>
         
         {/* Tabs */}
-        <Tabs defaultValue="bins" className="w-full">
+        <Tabs defaultValue="bins" className="w-full" onValueChange={(value) => setActiveTab(value)}>
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="bins" className="text-xs">Trash Bins</TabsTrigger>
             <TabsTrigger value="dirty" className="text-xs">Dirty Areas</TabsTrigger>
@@ -206,27 +353,65 @@ const Map = () => {
               <Filter className="h-4 w-4" />
               Filter
             </Button>
-            <Button size="sm" className="flex items-center gap-1 bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4" />
-              Add Bin
-            </Button>
+            
+            <Dialog open={addingBin} onOpenChange={setAddingBin}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="flex items-center gap-1 bg-green-600 hover:bg-green-700">
+                  <Plus className="h-4 w-4" />
+                  Add Bin
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Trash Bin</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Bin Name</Label>
+                    <Input 
+                      id="name" 
+                      value={newBin.name} 
+                      onChange={(e) => setNewBin({...newBin, name: e.target.value})}
+                      placeholder="Recycling Bin"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Bin Type</Label>
+                    <Select 
+                      value={newBin.type} 
+                      onValueChange={(value) => setNewBin({...newBin, type: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select bin type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="General Bin">General Bin</SelectItem>
+                        <SelectItem value="Recycling Bin">Recycling Bin</SelectItem>
+                        <SelectItem value="Compost Bin">Compost Bin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input 
+                      id="location" 
+                      value={newBin.location} 
+                      onChange={(e) => setNewBin({...newBin, location: e.target.value})}
+                      placeholder="Describe the location" 
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddingBin(false)}>Cancel</Button>
+                  <Button onClick={handleAddBin}>Add Bin</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
           
-          {/* Map (pyramid image placeholder) */}
+          {/* Interactive Map */}
           <div className="rounded-lg overflow-hidden h-60 mb-4 relative">
-            <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center flex-col">
-              <h3 className="text-lg font-bold text-white mb-2">Egypt Cleanup Map</h3>
-              <p className="text-sm text-white/90 text-center max-w-xs">
-                In the full version, you'll see an interactive map of Egypt with bin locations, trash reports, and community cleanup areas.
-              </p>
-            </div>
-            <div 
-              className="absolute inset-0 bg-cover bg-center z-0"
-              style={{ 
-                backgroundImage: "url(/placeholder.svg)",
-                filter: "brightness(0.7)"
-              }}
-            ></div>
+            <div ref={mapContainer} className="w-full h-full absolute" />
           </div>
           
           {/* Content for each tab */}
@@ -247,7 +432,20 @@ const Map = () => {
                       <p className="text-xs text-muted-foreground">{bin.location} • {bin.distance}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-blue-500">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-blue-500"
+                    onClick={() => {
+                      if (map.current) {
+                        map.current.flyTo({
+                          center: [bin.coordinates[0], bin.coordinates[1]],
+                          zoom: 14,
+                          essential: true
+                        });
+                      }
+                    }}
+                  >
                     <MapPin className="h-5 w-5" />
                   </Button>
                 </div>
@@ -262,6 +460,7 @@ const Map = () => {
             </div>
           </TabsContent>
           
+          {/* Keep the rest of the tab content */}
           <TabsContent value="dirty" className="mt-0">
             <h2 className="text-lg font-bold mb-2">Dirty Areas</h2>
             <div className="space-y-2">
