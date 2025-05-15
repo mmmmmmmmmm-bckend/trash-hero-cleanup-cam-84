@@ -22,7 +22,8 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   loading: boolean;
   isAdmin: boolean;
-  refreshProfile: () => Promise<void>; // New function to refresh profile data
+  refreshProfile: () => Promise<void>; // Function to refresh profile data
+  updateProfilePicture: (userId: string, imageUrl: string) => Promise<void>; // New function to update profile picture
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,6 +64,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profileData = await fetchUserProfile(user.id);
     if (profileData) {
       setUserProfile(profileData);
+    }
+  };
+
+  // New function to update profile picture
+  const updateProfilePicture = async (userId: string, imageUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: imageUrl })
+        .eq('id', userId);
+        
+      if (error) {
+        console.error('Error updating profile picture:', error);
+        throw error;
+      }
+      
+      // Refresh the profile data to get the updated avatar
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error in updateProfilePicture:', error);
+      throw error;
     }
   };
 
@@ -222,7 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signOut, 
       loading, 
       isAdmin,
-      refreshProfile
+      refreshProfile,
+      updateProfilePicture
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Mail, Phone, Upload } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, updateProfilePicture } = useAuth();
 
   const handleStartEditing = () => {
     setIsEditing(true);
@@ -134,7 +133,12 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
         const uploadedUrl = await uploadProfilePicture();
         if (uploadedUrl) {
           avatarUrl = uploadedUrl;
+          // Update the profile picture in AuthContext to sync across the app
+          await updateProfilePicture(user.id, uploadedUrl);
         }
+      } else if (selectedAvatar !== profile.avatar_url) {
+        // If avatar was changed but not to a custom picture
+        await updateProfilePicture(user.id, selectedAvatar);
       }
       
       const { error } = await supabase
@@ -143,7 +147,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
           username: editedProfile.username,
           full_name: editedProfile.full_name,
           phone_number: editedProfile.phone_number,
-          avatar_url: avatarUrl,
         })
         .eq('id', user.id);
       
@@ -166,6 +169,53 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
       toast({
         title: "Update failed",
         description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProfilePictureUpdate = async () => {
+    try {
+      if (!user) return;
+      
+      let avatarUrl = selectedAvatar;
+      
+      // If there's a new profile picture, upload it
+      if (profilePicture) {
+        const uploadedUrl = await uploadProfilePicture();
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+          // Update profile picture across the app
+          await updateProfilePicture(user.id, uploadedUrl);
+          
+          setProfile({
+            ...profile,
+            avatar_url: uploadedUrl
+          });
+          
+          toast({
+            title: "Profile picture updated",
+            description: "Your profile picture has been updated successfully",
+          });
+        }
+      } else if (selectedAvatar !== profile.avatar_url) {
+        // Update with selected avatar
+        await updateProfilePicture(user.id, selectedAvatar);
+        
+        setProfile({
+          ...profile,
+          avatar_url: selectedAvatar
+        });
+        
+        toast({
+          title: "Profile picture updated",
+          description: "Your avatar has been updated successfully",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update profile picture",
         variant: "destructive",
       });
     }
@@ -253,7 +303,7 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
               
               <div className="flex justify-end gap-2 mt-4">
                 <Button 
-                  onClick={handleSaveChanges}
+                  onClick={handleProfilePictureUpdate}
                   disabled={uploading}
                 >
                   {uploading ? 'Saving...' : 'Save Changes'}
