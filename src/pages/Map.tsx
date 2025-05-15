@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MapPin, Trash, Plus, Clock, Leaf, Filter, AlertCircle } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -7,33 +8,33 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Header from '../components/Header';
 
-// Mock bin data
+// Mock bin data for Egyptian locations
 const mockBins = [
-  { id: '1', lat: 37.7749, lng: -122.4194, type: 'recycling' },
-  { id: '2', lat: 37.7739, lng: -122.4312, type: 'general' },
-  { id: '3', lat: 37.7833, lng: -122.4167, type: 'compost' },
-  { id: '4', lat: 37.7694, lng: -122.4862, type: 'general' },
-  { id: '5', lat: 37.7831, lng: -122.4039, type: 'recycling' },
+  { id: '1', lat: 30.0444, lng: 31.2357, type: 'recycling', location: 'Cairo Downtown' },
+  { id: '2', lat: 30.0609, lng: 31.2197, type: 'general', location: 'Giza Square' },
+  { id: '3', lat: 31.2001, lng: 29.9187, type: 'compost', location: 'Alexandria Corniche' },
+  { id: '4', lat: 30.0566, lng: 31.2262, type: 'general', location: 'Tahrir Square' },
+  { id: '5', lat: 30.0130, lng: 31.2088, type: 'recycling', location: 'Zamalek District' },
 ];
 
-// Mock dirty areas
+// Mock dirty areas with Egyptian locations
 const mockDirtyAreas = [
-  { id: '1', lat: 37.7795, lng: -122.4224, severity: 'high', reporter: 'Emma G.', timestamp: '2h ago', status: 'pending' },
-  { id: '2', lat: 37.7719, lng: -122.4132, severity: 'medium', reporter: 'Alex R.', timestamp: '5h ago', status: 'acknowledged' },
-  { id: '3', lat: 37.7873, lng: -122.4259, severity: 'low', reporter: 'Sam E.', timestamp: '1d ago', status: 'completed' },
+  { id: '1', lat: 30.0444, lng: 31.2357, severity: 'high', reporter: 'Ahmed M.', timestamp: '2h ago', status: 'pending', location: 'Nile Riverside' },
+  { id: '2', lat: 30.0609, lng: 31.2197, severity: 'medium', reporter: 'Mona S.', timestamp: '5h ago', status: 'acknowledged', location: 'Khan el-Khalili' },
+  { id: '3', lat: 31.2001, lng: 29.9187, severity: 'low', reporter: 'Karim H.', timestamp: '1d ago', status: 'completed', location: 'El Montazah Gardens' },
 ];
 
-// Mock trash reports
+// Mock trash reports with Egyptian locations
 const mockTrashReports = [
-  { id: '1', lat: 37.7719, lng: -122.4194, type: 'plastic', reporter: 'Jamie S.', timestamp: '30m ago', status: 'pending', description: 'Plastic bottles near park bench' },
-  { id: '2', lat: 37.7829, lng: -122.4132, type: 'paper', reporter: 'Chris T.', timestamp: '2h ago', status: 'acknowledged', description: 'Paper waste by bus stop' },
-  { id: '3', lat: 37.7763, lng: -122.4259, type: 'mixed', reporter: 'Alex M.', timestamp: '1d ago', status: 'completed', description: 'Mixed trash cleared from trail' },
+  { id: '1', lat: 30.0444, lng: 31.2357, type: 'plastic', reporter: 'Laila F.', timestamp: '30m ago', status: 'pending', description: 'Plastic bottles near Al-Azhar Park', location: 'Al-Azhar Park' },
+  { id: '2', lat: 30.0609, lng: 31.2197, type: 'paper', reporter: 'Tarek N.', timestamp: '2h ago', status: 'acknowledged', description: 'Paper waste by Tahrir metro station', location: 'Tahrir Metro' },
+  { id: '3', lat: 31.2001, lng: 29.9187, type: 'mixed', reporter: 'Sara A.', timestamp: '1d ago', status: 'completed', description: 'Mixed trash cleared from Nile walkway', location: 'Nile Walkway' },
 ];
 
-// Mock cleanup events
+// Mock cleanup events with Egyptian locations
 const mockEvents = [
-  { id: '1', lat: 37.7849, lng: -122.4294, title: 'Beach Cleanup', date: 'Sat, Jun 12', participants: 24 },
-  { id: '2', lat: 37.7739, lng: -122.4332, title: 'Park Revival', date: 'Sun, Jun 20', participants: 15 },
+  { id: '1', lat: 30.0444, lng: 31.2357, title: 'Nile River Cleanup', date: 'Sat, Jun 12', participants: 24, location: 'Cairo Nile Corniche' },
+  { id: '2', lat: 31.2001, lng: 29.9187, title: 'Alexandria Beach Revival', date: 'Sun, Jun 20', participants: 15, location: 'Montazah Beach' },
 ];
 
 const Map = () => {
@@ -200,13 +201,13 @@ const Map = () => {
         <div className="w-full h-72 bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 bottom-0 bg-cover bg-center opacity-60 dark:opacity-40"
             style={{ 
-              backgroundImage: 'url("https://images.unsplash.com/photo-1506744038136-46273834b3fb")' 
+              backgroundImage: 'url("https://images.unsplash.com/photo-1556674440-76fb5733f224?q=80&w=3870&auto=format&fit=crop")' 
             }}
           />
           <div className="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-30 dark:bg-opacity-60" />
           <div className="relative z-10 text-white text-center p-4">
-            <h3 className="text-xl font-bold mb-2">Map Feature Coming Soon</h3>
-            <p className="text-sm">In the full version, you'll see an interactive map with bin locations, trash reports, and dirty areas.</p>
+            <h3 className="text-xl font-bold mb-2">Egyptian Interactive Map</h3>
+            <p className="text-sm">In the full version, you'll see an interactive map with bin locations, trash reports, and dirty areas across Egypt.</p>
           </div>
         </div>
         
@@ -216,7 +217,7 @@ const Map = () => {
             <>
               <h2 className="text-lg font-semibold flex items-center">
                 <Trash className="w-5 h-5 mr-2 text-primary" />
-                Nearby Bins
+                Nearby Bins in Egypt
               </h2>
               <div className="space-y-3">
                 {mockBins.map(bin => (
@@ -228,7 +229,7 @@ const Map = () => {
                         </div>
                         <div className="flex-1">
                           <h3 className="font-medium">{bin.type.charAt(0).toUpperCase() + bin.type.slice(1)} Bin</h3>
-                          <p className="text-sm text-muted-foreground">250m away</p>
+                          <p className="text-sm text-muted-foreground">{bin.location}</p>
                         </div>
                         <button className="text-accent p-2">
                           <MapPin className="w-5 h-5" />
@@ -254,7 +255,7 @@ const Map = () => {
             <>
               <h2 className="text-lg font-semibold flex items-center">
                 <AlertCircle className="w-5 h-5 mr-2 text-primary" />
-                Reported Dirty Areas
+                Reported Dirty Areas in Egypt
               </h2>
               <div className="space-y-3">
                 {mockDirtyAreas.map(area => (
@@ -273,7 +274,7 @@ const Map = () => {
                         <div className="flex-1">
                           <div className="flex justify-between items-center">
                             <h3 className="font-medium">
-                              {area.severity.charAt(0).toUpperCase() + area.severity.slice(1)} Priority Area
+                              {area.location}
                             </h3>
                             {getStatusBadge(area.status)}
                           </div>
@@ -299,7 +300,7 @@ const Map = () => {
             <>
               <h2 className="text-lg font-semibold flex items-center">
                 <Trash className="w-5 h-5 mr-2 text-primary" />
-                Trash Reports
+                Trash Reports in Egypt
               </h2>
               <div className="space-y-3">
                 {mockTrashReports.map(report => (
@@ -311,7 +312,7 @@ const Map = () => {
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium">{report.type.charAt(0).toUpperCase() + report.type.slice(1)} Waste</h3>
+                            <h3 className="font-medium">{report.location}</h3>
                             {getStatusBadge(report.status)}
                           </div>
                           <p className="text-sm text-card-foreground/80 mt-1">{report.description}</p>
@@ -348,7 +349,7 @@ const Map = () => {
                 <>
                   <h2 className="text-lg font-semibold flex items-center">
                     <Leaf className="w-5 h-5 mr-2 text-primary" />
-                    Upcoming Cleanup Events
+                    Upcoming Cleanup Events in Egypt
                   </h2>
                   <div className="space-y-3">
                     {mockEvents.map(event => (
@@ -364,6 +365,7 @@ const Map = () => {
                                 <p className="text-sm text-muted-foreground">{event.date}</p>
                                 <p className="text-sm text-accent">{event.participants} participants</p>
                               </div>
+                              <p className="text-xs text-muted-foreground">{event.location}</p>
                             </div>
                             <button className="text-accent p-2">
                               <MapPin className="w-5 h-5" />
@@ -376,7 +378,7 @@ const Map = () => {
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <h2 className="text-lg font-semibold mb-2">No Events Nearby</h2>
+                  <h2 className="text-lg font-semibold mb-2">No Events in Egypt Yet</h2>
                   <p className="text-muted-foreground">Check back later for organized cleanup events in your area!</p>
                 </div>
               )}
