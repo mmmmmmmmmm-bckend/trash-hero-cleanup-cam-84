@@ -338,7 +338,8 @@ const CleanupCamera = () => {
         </div>
       </div>
       
-      <NavBar />
+      {/* Only show NavBar when not recording */}
+      {!isRecording && <NavBar />}
     </div>
   );
 };
