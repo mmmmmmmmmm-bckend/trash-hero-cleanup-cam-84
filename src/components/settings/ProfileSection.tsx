@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
-import { User, Mail, Phone } from 'lucide-react';
+import { User, Mail, Phone, Upload } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import AvatarSelector, { avatars } from '@/components/AvatarSelector';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileSectionProps {
   profile: {
@@ -34,16 +36,106 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({ ...profile });
   const [selectedAvatar, setSelectedAvatar] = useState(profile.avatar_url);
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const { refreshProfile } = useAuth();
 
   const handleStartEditing = () => {
     setIsEditing(true);
     setEditedProfile({ ...profile });
     setSelectedAvatar(profile.avatar_url);
+    setProfilePicturePreview(null);
+  };
+
+  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Profile picture must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file",
+          variant: "destructive", 
+        });
+        return;
+      }
+      
+      setProfilePicture(file);
+      const objectUrl = URL.createObjectURL(file);
+      setProfilePicturePreview(objectUrl);
+      
+      // Auto-switch from avatar selection
+      setSelectedAvatar('');
+    }
+  };
+
+  const uploadProfilePicture = async (): Promise<string | null> => {
+    if (!profilePicture || !user) return null;
+    
+    setUploading(true);
+    try {
+      // Create a unique file name
+      const fileExtension = profilePicture.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExtension}`;
+      
+      // Upload to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('profiles')
+        .upload(`public/${fileName}`, profilePicture, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) {
+        console.error('Error uploading profile picture:', error);
+        toast({
+          title: "Upload failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      // Get public URL for the uploaded image
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(`public/${fileName}`);
+      
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Error in profile picture upload process:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveChanges = async () => {
     try {
       if (!user) return;
+      
+      let avatarUrl = selectedAvatar;
+      
+      // If there's a new profile picture, upload it
+      if (profilePicture) {
+        const uploadedUrl = await uploadProfilePicture();
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        }
+      }
       
       const { error } = await supabase
         .from('profiles')
@@ -51,7 +143,7 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
           username: editedProfile.username,
           full_name: editedProfile.full_name,
           phone_number: editedProfile.phone_number,
-          avatar_url: selectedAvatar,
+          avatar_url: avatarUrl,
         })
         .eq('id', user.id);
       
@@ -59,9 +151,12 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
       
       setProfile({
         ...editedProfile,
-        avatar_url: selectedAvatar
+        avatar_url: avatarUrl
       });
       setIsEditing(false);
+      
+      // Refresh profile data in the auth context
+      await refreshProfile();
       
       toast({
         title: "Profile updated",
@@ -78,7 +173,25 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    setProfilePicture(null);
+    setProfilePicturePreview(null);
     setSelectedAvatar(profile.avatar_url);
+  };
+
+  // Helper function to determine if the avatar_url is a custom uploaded image or predefined avatar
+  const isCustomImage = (url: string) => {
+    return url && !url.startsWith('avatar');
+  };
+
+  // Determine what image to show
+  const getImageSource = () => {
+    if (profilePicturePreview) {
+      return profilePicturePreview;
+    } else if (isCustomImage(profile.avatar_url)) {
+      return profile.avatar_url;
+    } else {
+      return avatars.find(a => a.id === profile.avatar_url)?.src || '/placeholder.svg';
+    }
   };
 
   return (
@@ -87,30 +200,65 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
         <Dialog>
           <DialogTrigger asChild>
             <div className="cursor-pointer mb-2">
-              <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <img 
-                  src={avatars.find(a => a.id === profile.avatar_url)?.src || '/placeholder.svg'} 
+              <Avatar className="w-16 h-16">
+                <AvatarImage 
+                  src={getImageSource()} 
                   alt="User avatar" 
-                  className="w-full h-full object-cover"
                 />
-              </div>
+                <AvatarFallback>{profile.full_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
             </div>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
-            <DialogTitle className="text-center mb-4">Choose Your Avatar</DialogTitle>
-            <AvatarSelector 
-              selectedAvatar={selectedAvatar} 
-              onSelectAvatar={(avatarId) => setSelectedAvatar(avatarId)} 
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button 
-                onClick={() => {
-                  handleSaveChanges();
-                }}
-                disabled={selectedAvatar === profile.avatar_url}
-              >
-                Save Avatar
-              </Button>
+            <DialogTitle className="text-center mb-4">Profile Picture</DialogTitle>
+            
+            {/* Upload custom picture */}
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage 
+                    src={profilePicturePreview || profile.avatar_url} 
+                    alt="Profile preview" 
+                  />
+                  <AvatarFallback>{profile.full_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
+              </div>
+              
+              <label htmlFor="profile-picture-upload" className="cursor-pointer">
+                <div className="flex gap-2 items-center p-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <Upload size={16} />
+                  <span className="text-sm">Upload New Picture</span>
+                </div>
+                <Input 
+                  id="profile-picture-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  className="hidden"
+                />
+              </label>
+              
+              <div className="text-center text-sm text-muted-foreground">
+                - or choose from avatars -
+              </div>
+              
+              <AvatarSelector 
+                selectedAvatar={selectedAvatar} 
+                onSelectAvatar={(avatarId) => {
+                  setSelectedAvatar(avatarId);
+                  setProfilePicturePreview(null);
+                  setProfilePicture(null);
+                }} 
+              />
+              
+              <div className="flex justify-end gap-2 mt-4">
+                <Button 
+                  onClick={handleSaveChanges}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -162,8 +310,9 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
             <Button 
               className="flex-1"
               onClick={handleSaveChanges}
+              disabled={uploading}
             >
-              Save Changes
+              {uploading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>
