@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { User, Award, Star, Clock, MapPin, Trash, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,15 +8,16 @@ import PointsBadge from '../components/PointsBadge';
 import Header from '../components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import AvatarUploader from '@/components/AvatarUploader';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import AvatarSelector, { avatars } from '@/components/AvatarSelector';
 
 const Profile = () => {
   const [headerCompact, setHeaderCompact] = useState(false);
   const [cleanups, setCleanups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState('');
   const [stats, setStats] = useState({
     totalCleanups: 0,
     totalPoints: 0,
@@ -61,6 +63,7 @@ const Profile = () => {
         });
       } else if (profileData) {
         setProfile(profileData);
+        setSelectedAvatar(profileData.avatar_url || 'avatar1');
       }
       
       // Fetch user cleanups
@@ -137,18 +140,38 @@ const Profile = () => {
     }
   };
 
-  const handleAvatarChange = (newAvatarUrl: string) => {
-    if (profile) {
+  const handleAvatarChange = async (avatarId: string) => {
+    try {
+      if (!user || !profile) return;
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarId })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Update local state
       setProfile({
         ...profile,
-        avatar_url: newAvatarUrl
+        avatar_url: avatarId
+      });
+      
+      setSelectedAvatar(avatarId);
+      
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile picture has been changed successfully."
+      });
+    } catch (error: any) {
+      console.error('Error updating avatar:', error);
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update avatar",
+        variant: "destructive",
       });
     }
-    
-    toast({
-      title: "Avatar Updated",
-      description: "Your profile picture has been changed successfully."
-    });
   };
 
   return (
@@ -171,7 +194,7 @@ const Profile = () => {
                   <div className="w-20 h-20 bg-white rounded-full overflow-hidden mb-3 cursor-pointer hover:opacity-90 transition-opacity">
                     <Avatar className="w-20 h-20">
                       <AvatarImage 
-                        src={profile?.avatar_url || ''} 
+                        src={avatars.find(a => a.id === profile?.avatar_url)?.src || avatars[0].src} 
                         alt={profile?.full_name || 'User'} 
                       />
                       <AvatarFallback>{(profile?.full_name || 'User').substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -179,11 +202,10 @@ const Profile = () => {
                   </div>
                 </DialogTrigger>
                 <DialogContent className="max-w-sm">
-                  <DialogTitle className="text-center mb-4">Change Your Avatar</DialogTitle>
-                  <AvatarUploader 
-                    currentAvatarUrl={profile?.avatar_url}
-                    username={profile?.username}
-                    onAvatarChange={handleAvatarChange}
+                  <DialogTitle className="text-center mb-4">Choose Your Avatar</DialogTitle>
+                  <AvatarSelector 
+                    selectedAvatar={selectedAvatar} 
+                    onSelectAvatar={handleAvatarChange} 
                   />
                 </DialogContent>
               </Dialog>
