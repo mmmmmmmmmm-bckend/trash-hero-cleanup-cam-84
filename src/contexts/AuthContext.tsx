@@ -5,10 +5,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 
+type SignUpResponse = {
+  data: {
+    user: User | null;
+    session: Session | null;
+  } | null;
+  error: Error | null;
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signUp: (email: string, password: string, userData: any) => Promise<SignUpResponse>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -79,10 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, userData: any) => {
+  const signUp = async (email: string, password: string, userData: any): Promise<SignUpResponse> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const result = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -90,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      if (error) throw error;
+      if (result.error) throw result.error;
       
       toast({
         title: "Account created successfully",
@@ -98,12 +106,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/');
+      return result;
     } catch (error: any) {
       toast({
         title: "Registration failed",
         description: error.message || "An error occurred during registration",
         variant: "destructive",
       });
+      return {
+        data: null,
+        error
+      };
     } finally {
       setLoading(false);
     }
