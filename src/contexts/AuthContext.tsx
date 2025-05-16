@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -200,18 +199,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      toast({
-        title: "Login successful",
-        description: "You have been logged in successfully",
-      });
-      
-      navigate('/');
+      return { data, error: null }; // Return an object with data and null error
     } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message || "Invalid email or password",
-        variant: "destructive",
-      });
+      throw error; // Throw the error to be caught in the component
     } finally {
       setLoading(false);
     }

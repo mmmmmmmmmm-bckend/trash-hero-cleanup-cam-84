@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -28,11 +27,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        throw new Error(error.message);
-      }
+      await signIn(email, password);
       
       toast({
         title: "Login successful",
