@@ -155,9 +155,8 @@ const Challenges = () => {
   // Helper function to format leaderboard data
   const formatLeaderboardData = (data) => {
     return data.map((user, index) => {
-      // Find the correct avatar from the avatars array
-      const avatarObj = avatars.find(a => a.id === user.avatar_url);
-      const avatarSrc = avatarObj ? avatarObj.src : `https://i.pravatar.cc/150?img=${index + 1}`;
+      // Use our helper function for consistent avatar URLs
+      const avatarSrc = supabase.getAvatarSrc(user.avatar_url);
       
       return {
         id: user.id,
@@ -171,8 +170,7 @@ const Challenges = () => {
   
   // Get user avatar URL
   const getUserAvatarUrl = () => {
-    const avatarObj = avatars.find(a => a.id === userAvatar);
-    return avatarObj ? avatarObj.src : 'https://i.pravatar.cc/150?img=5';
+    return supabase.getAvatarSrc(userAvatar);
   };
   
   return (

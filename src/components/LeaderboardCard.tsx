@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { avatars } from '@/components/AvatarSelector';
 
 interface LeaderboardEntry {
@@ -58,11 +57,8 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
         
         if (data) {
           const leaderboardData = data.map((user, index) => {
-            // Find the correct avatar from the avatars array
-            const avatarObj = avatars.find(a => a.id === user.avatar_url);
-            const avatarSrc = avatarObj 
-              ? avatarObj.src 
-              : `https://i.pravatar.cc/150?img=${index + 1}`;
+            // Use the helper function to get the correct avatar URL
+            const avatarSrc = getAvatarSrc(user.avatar_url);
               
             return {
               id: user.id,

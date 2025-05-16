@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
@@ -97,6 +96,14 @@ const Index = () => {
     }
   };
 
+  // Get avatar source based on avatar_url using our helper function
+  const getAvatarSrc = () => {
+    if (!userProfile?.avatar_url) return avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
+    
+    // Use the helper function from client.ts
+    return supabase.getAvatarSrc(userProfile.avatar_url);
+  };
+
   const fetchLeaderboard = async () => {
     try {
       // Get top users by points
@@ -113,10 +120,8 @@ const Index = () => {
       
       // Format for leaderboard
       const formattedLeaders = data.map((user, index) => {
-        // Find the avatar URL based on the avatar_url ID
-        const avatarSrc = user.avatar_url ? 
-          (avatars.find(a => a.id === user.avatar_url)?.src || `https://i.pravatar.cc/150?img=${index + 1}`) : 
-          `https://i.pravatar.cc/150?img=${index + 1}`;
+        // Use the helper function to get consistent avatar URLs
+        const avatarSrc = supabase.getAvatarSrc(user.avatar_url);
           
         return {
           id: user.id,
@@ -131,13 +136,6 @@ const Index = () => {
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     }
-  };
-
-  // Get avatar source based on avatar_url
-  const getAvatarSrc = () => {
-    if (!userProfile?.avatar_url) return avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
-    const avatar = avatars.find(a => a.id === userProfile.avatar_url);
-    return avatar?.src || avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
   };
 
   return (

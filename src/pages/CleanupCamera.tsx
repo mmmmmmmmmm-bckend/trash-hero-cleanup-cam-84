@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, X, ArrowRight, ArrowLeft, Play, Pause } from 'lucide-react';
@@ -24,6 +23,16 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 
+// Trash type definitions with their point values
+const TRASH_TYPES = {
+  "Plastic bottle": { points: 15, recyclingTime: "450 years", impact: "High" },
+  "Food wrapper": { points: 10, recyclingTime: "20-30 years", impact: "Medium" },
+  "Paper waste": { points: 5, recyclingTime: "2-6 weeks", impact: "Low" },
+  "Metal can": { points: 20, recyclingTime: "50-100 years", impact: "Medium" },
+  "Glass bottle": { points: 25, recyclingTime: "1 million+ years", impact: "Medium" },
+  "Cardboard": { points: 10, recyclingTime: "2 months", impact: "Low" }
+};
+
 const CleanupCamera = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,6 +40,8 @@ const CleanupCamera = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const detectionIntervalRef = useRef<number | null>(null);
   
   const [step, setStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -44,6 +55,12 @@ const CleanupCamera = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [showUI, setShowUI] = useState(true);
   const [trashClassification, setTrashClassification] = useState<string | null>(null);
+  const [detections, setDetections] = useState<Array<{
+    type: string;
+    confidence: number;
+    box: {x: number, y: number, width: number, height: number};
+  }>>([]);
+  const [earnedPoints, setEarnedPoints] = useState(0);
   
   const steps = [
     { title: "Show the trash", description: "First, show us the trash you've found" },
@@ -53,9 +70,7 @@ const CleanupCamera = () => {
 
   // Handle tap to toggle UI visibility
   const toggleUI = () => {
-    if (!isRecording) {
-      setShowUI(!showUI);
-    }
+    setShowUI(!showUI);
   };
 
   // Start the camera on component mount
@@ -63,6 +78,7 @@ const CleanupCamera = () => {
     startCamera();
     return () => {
       stopCamera();
+      stopObjectDetection();
     };
   }, []);
 
@@ -101,6 +117,82 @@ const CleanupCamera = () => {
     }
   };
 
+  // Object detection simulation
+  const startObjectDetection = () => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+    }
+    
+    const detectObjects = () => {
+      if (!canvasRef.current || !videoRef.current || !streamRef.current) return;
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw the current video frame onto the canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Simulate AI detection with random boxes
+      // In a real app, this would use TensorFlow.js or another ML library
+      if (Math.random() > 0.3) { // 70% chance to detect something
+        const trashTypes = Object.keys(TRASH_TYPES);
+        const randomTypeIndex = Math.floor(Math.random() * trashTypes.length);
+        const randomType = trashTypes[randomTypeIndex];
+        const randomConfidence = 75 + Math.floor(Math.random() * 20); // 75% to 95%
+        
+        // Random position and size for detection box
+        const x = Math.floor(Math.random() * (canvas.width - 100));
+        const y = Math.floor(Math.random() * (canvas.height - 100));
+        const width = 50 + Math.floor(Math.random() * 100);
+        const height = 50 + Math.floor(Math.random() * 100);
+        
+        // Draw detection box and label
+        ctx.strokeStyle = '#00FF00';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, width, height);
+        
+        // Background for label
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(x, y - 20, 120, 20);
+        
+        // Label text
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(`${randomType} ${randomConfidence}%`, x + 5, y - 5);
+        
+        // Add to detections array for use in UI
+        setDetections([{
+          type: randomType,
+          confidence: randomConfidence,
+          box: {x, y, width, height}
+        }]);
+        
+        // Update the current AI prediction for the UI
+        setAiPrediction(randomType);
+        setAiConfidence(randomConfidence);
+        
+        // Set classification data for environmental impact
+        setTrashClassification(JSON.stringify(TRASH_TYPES[randomType]));
+      }
+    };
+    
+    // Run detection every 500ms
+    detectionIntervalRef.current = setInterval(detectObjects, 500) as unknown as number;
+  };
+
+  const stopObjectDetection = () => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+      detectionIntervalRef.current = null;
+    }
+  };
+
   const startRecording = async () => {
     if (!streamRef.current) {
       await startCamera();
@@ -108,7 +200,11 @@ const CleanupCamera = () => {
     
     if (streamRef.current) {
       setIsRecording(true);
-      setShowUI(false); // Hide UI during recording
+      // Keep UI visible during recording - FIX for BUG #2
+      // setShowUI(false); // OLD behavior that caused the bug
+      
+      // Start object detection
+      startObjectDetection();
       
       // If we need audio for recording, request it now
       let recordingStream: MediaStream;
@@ -167,7 +263,9 @@ const CleanupCamera = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      setShowUI(true); // Show UI when recording stops
+      
+      // Stop object detection when recording stops
+      stopObjectDetection();
       
       // Clear the timer
       if (timerInterval) {
@@ -195,30 +293,25 @@ const CleanupCamera = () => {
     
     setTimeout(() => {
       // Simulate AI detection results based on step
-      const trashTypes = ["Plastic bottle", "Food wrapper", "Paper waste", "Metal can", "Glass bottle", "Cardboard"];
-      const randomType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+      const trashTypes = Object.keys(TRASH_TYPES);
+      const randomTypeIndex = Math.floor(Math.random() * trashTypes.length);
+      const randomType = trashTypes[randomTypeIndex];
       const randomConfidence = 75 + Math.floor(Math.random() * 20); // 75% to 95%
       
       setAiPrediction(randomType);
       setAiConfidence(randomConfidence);
       
-      // Classify trash type for environmental impact data
-      const trashClassifications = {
-        "Plastic bottle": { type: "Plastic", recyclingTime: "450 years", impact: "High" },
-        "Food wrapper": { type: "Mixed materials", recyclingTime: "20-30 years", impact: "Medium" },
-        "Paper waste": { type: "Paper", recyclingTime: "2-6 weeks", impact: "Low" },
-        "Metal can": { type: "Metal", recyclingTime: "50-100 years", impact: "Medium" },
-        "Glass bottle": { type: "Glass", recyclingTime: "1 million+ years", impact: "Medium" },
-        "Cardboard": { type: "Paper", recyclingTime: "2 months", impact: "Low" }
-      };
+      // Calculate points based on trash type
+      const pointsEarned = TRASH_TYPES[randomType].points;
+      setEarnedPoints(prev => prev + pointsEarned);
       
-      // Set the classification based on the predicted trash type
-      setTrashClassification(JSON.stringify(trashClassifications[randomType as keyof typeof trashClassifications]));
+      // Classify trash type for environmental impact data
+      setTrashClassification(JSON.stringify(TRASH_TYPES[randomType]));
       setIsAnalyzing(false);
       
       toast({
         title: "AI Analysis Complete",
-        description: `Detected: ${randomType} (${randomConfidence}% confidence)`,
+        description: `Detected: ${randomType} (${randomConfidence}% confidence) +${pointsEarned} points!`,
       });
     }, 2000); // Simulate 2-second AI processing time
   };
@@ -237,6 +330,8 @@ const CleanupCamera = () => {
       setStep(step - 1);
       // Remove the last recorded video
       setVideoData(videoData.slice(0, -1));
+      // Reset earned points proportionally
+      setEarnedPoints(Math.floor(earnedPoints * (step - 1) / step));
       // Reset AI prediction for this step
       setAiPrediction(null);
       setAiConfidence(null);
@@ -259,14 +354,14 @@ const CleanupCamera = () => {
     
     try {
       // Upload video/evidence data would go here in a real implementation
-      // For now, just add a cleanup record
+      // For now, just add a cleanup record with points based on trash type
       const { data, error } = await supabase
         .from('cleanups')
         .insert([
           { 
             user_id: user.id,
             location: 'Custom location', 
-            points: 25,
+            points: earnedPoints, // Use earned points based on trash type
             verified: false,
             trash_weight_kg: 0.5 // Estimated weight
           }
@@ -285,13 +380,13 @@ const CleanupCamera = () => {
         const currentPoints = profileData.total_points || 0;
         await supabase
           .from('profiles')
-          .update({ total_points: currentPoints + 25 })
+          .update({ total_points: currentPoints + earnedPoints })
           .eq('id', user.id);
       }
       
       toast({
         title: "Cleanup Submitted",
-        description: "Your cleanup has been submitted for verification. You'll receive points soon!",
+        description: `Your cleanup has been submitted. You earned ${earnedPoints} points!`,
       });
     } catch (error: any) {
       console.error("Error submitting cleanup:", error);
@@ -331,6 +426,12 @@ const CleanupCamera = () => {
             className="w-full h-full object-cover"
           />
           
+          {/* Canvas for object detection */}
+          <canvas 
+            ref={canvasRef} 
+            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
+          />
+          
           {!isCameraReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80">
               <div className="text-center text-white">
@@ -350,9 +451,12 @@ const CleanupCamera = () => {
                 </div>
               )}
               
-              {/* Step indicator */}
+              {/* Points indicator */}
               <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 px-3 py-1 rounded-full">
                 <span className="text-white text-sm font-medium">Step {step + 1}/{steps.length}</span>
+                {earnedPoints > 0 && (
+                  <span className="text-white text-sm font-medium ml-2">Points: {earnedPoints}</span>
+                )}
               </div>
               
               {/* Instructions */}
@@ -375,6 +479,9 @@ const CleanupCamera = () => {
                     ></div>
                   </div>
                   <p className="mt-1">{aiConfidence}% confidence</p>
+                  {trashClassification && (
+                    <p className="mt-1">Points: +{JSON.parse(trashClassification).points}</p>
+                  )}
                 </div>
               )}
               
