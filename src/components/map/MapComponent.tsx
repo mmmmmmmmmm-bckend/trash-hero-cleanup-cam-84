@@ -34,7 +34,7 @@ interface MapComponentProps {
 const MapComponent = ({ containerStyle }: MapComponentProps) => {
   return (
     <div style={containerStyle} className="relative rounded-lg overflow-hidden">
-      <Card className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary/20 border border-muted">
+      <Card className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-background to-primary/10 border border-muted">
         <CardContent className="pt-6 flex flex-col items-center text-center">
           <div className="rounded-full bg-primary/10 p-3 mb-4">
             <Map className="h-6 w-6 text-primary" />

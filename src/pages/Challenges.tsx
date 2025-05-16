@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Award, Clock, Check, User, Users } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -14,7 +15,7 @@ import { AchievementsDisplay } from '@/components/challenges/AchievementsDisplay
 
 const Challenges = () => {
   const [activeTab, setActiveTab] = useState('challenges'); // 'challenges' or 'leaderboard'
-  const [leaderboardType, setLeaderboardType] = useState<'global' | 'local'>('global'); // Explicitly type as union
+  const [leaderboardType, setLeaderboardType] = useState<'global' | 'local'>('global');
   const [globalLeaders, setGlobalLeaders] = useState([]);
   const [localLeaders, setLocalLeaders] = useState([]);
   const [userRank, setUserRank] = useState({global: 0, local: 0});
@@ -52,12 +53,12 @@ const Challenges = () => {
   const fetchLeaderboardData = async () => {
     setLoading(true);
     try {
-      // Fetch global leaderboard
+      // Fetch global leaderboard - limit to top 5
       const { data: globalData, error: globalError } = await supabase
         .from('profiles')
         .select('id, username, full_name, avatar_url, total_points')
         .order('total_points', { ascending: false })
-        .limit(10);
+        .limit(5);
         
       if (globalError) throw globalError;
       
@@ -80,7 +81,7 @@ const Challenges = () => {
         if (userGlobalRank !== -1) {
           setUserRank(prev => ({...prev, global: userGlobalRank + 1}));
         } else {
-          // If user not in top 10, we need to count all users with higher points
+          // If user not in top 5, we need to count all users with higher points
           const { count, error } = await supabase
             .from('profiles')
             .select('id', { count: 'exact' })

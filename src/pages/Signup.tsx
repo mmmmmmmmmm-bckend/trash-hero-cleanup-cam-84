@@ -175,7 +175,17 @@ const Signup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/5 dark:to-accent/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Join TrashHero</CardTitle>
+          <div className="flex justify-center mb-2">
+            <img 
+              src="/lovable-uploads/b7067255-97a6-42dd-8870-786af090bc03.png" 
+              alt="TrashHero Logo" 
+              className="h-16 w-auto" 
+            />
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            <span className="text-[#1bd0af]">TRASH</span>
+            <span className="text-gray-400">HERO</span>
+          </CardTitle>
           <CardDescription>
             Create an account to start making an impact
           </CardDescription>

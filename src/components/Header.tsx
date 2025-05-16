@@ -32,9 +32,17 @@ const Header = ({ title, showBack = false }: HeaderProps) => {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <h1 className={`font-bold ${isHomePage ? 'text-2xl' : 'text-xl'}`}>
-          {isHomePage ? 'TrashHero' : title}
-        </h1>
+        {isHomePage ? (
+          <div className="flex items-center gap-2">
+            <img src="/lovable-uploads/b7067255-97a6-42dd-8870-786af090bc03.png" alt="TrashHero Logo" className="h-8 w-auto" />
+            <h1 className="font-bold text-2xl">
+              <span className="text-[#1bd0af]">TRASH</span>
+              <span className="text-gray-400">HERO</span>
+            </h1>
+          </div>
+        ) : (
+          <h1 className="font-bold text-xl">{title}</h1>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />

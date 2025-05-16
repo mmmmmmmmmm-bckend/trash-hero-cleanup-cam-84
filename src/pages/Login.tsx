@@ -74,8 +74,20 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background leaf-pattern">
       <div className="w-full max-w-md bg-card p-6 rounded-lg shadow-md border border-border">
-        <h1 className="text-2xl font-bold mb-2 text-center">Welcome Back</h1>
-        <p className="text-muted-foreground text-center mb-6">Sign in to continue to TrashHero</p>
+        <div className="flex flex-col items-center mb-6">
+          <img 
+            src="/lovable-uploads/b7067255-97a6-42dd-8870-786af090bc03.png" 
+            alt="TrashHero Logo" 
+            className="h-16 w-auto mb-2" 
+          />
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-1">
+              <span className="text-[#1bd0af]">TRASH</span>
+              <span className="text-gray-400">HERO</span>
+            </h1>
+            <p className="text-muted-foreground">Sign in to continue</p>
+          </div>
+        </div>
         
         <form onSubmit={handleLogin} className="space-y-4">
           {error && (

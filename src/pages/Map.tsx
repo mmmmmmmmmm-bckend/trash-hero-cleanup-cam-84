@@ -229,7 +229,7 @@ const Map = () => {
   };
 
   return (
-    <div className="min-h-screen pb-16 bg-background dark:bg-gray-900">
+    <div className="min-h-screen pb-16 bg-background">
       <Header title="Community Map" showBack={true} />
       
       <main className="px-4">
@@ -290,7 +290,7 @@ const Map = () => {
             
             <Button 
               size="sm" 
-              className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
+              className="flex items-center gap-1"
               onClick={() => setAddingBin(true)}
             >
               <Plus className="h-4 w-4" />

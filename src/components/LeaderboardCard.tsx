@@ -19,7 +19,7 @@ interface LeaderboardCardProps {
 const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ 
   title, 
   entries: initialEntries, 
-  limit = 10, 
+  limit = 5, 
   localOnly = false 
 }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>(initialEntries || []);
