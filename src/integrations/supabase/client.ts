@@ -11,17 +11,10 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Helper function to get avatar URL based on avatar_id or custom URL
+// Helper function to get avatar URL - simplified to only use direct URLs
 export const getAvatarSrc = (avatarUrl: string | null) => {
   if (!avatarUrl) return "https://i.pravatar.cc/150?img=5";
   
-  // Check if it's a predefined avatar (avatarN) or a custom URL
-  if (avatarUrl.startsWith('avatar')) {
-    const { avatars } = require('@/components/AvatarSelector');
-    const avatar = avatars.find((a: any) => a.id === avatarUrl);
-    return avatar?.src || "https://i.pravatar.cc/150?img=5";
-  }
-  
-  // It's a custom URL
+  // Just return the avatar URL as is (we're no longer using predefined avatars)
   return avatarUrl;
 };

@@ -1,6 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
-import { avatars } from '@/components/AvatarSelector';
 
 interface LeaderboardEntry {
   id: string;
@@ -27,8 +27,8 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
   const [loading, setLoading] = useState(!initialEntries);
 
   useEffect(() => {
-    // Don't fetch if entries are provided
-    if (initialEntries) {
+    // If entries are provided and we're not forcing a fetch, use them
+    if (initialEntries && !localOnly) {
       setEntries(initialEntries);
       return;
     }
@@ -36,6 +36,7 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
     const fetchLeaderboard = async () => {
       setLoading(true);
       try {
+        // Always fetch from the database to ensure we have real users
         let query = supabase
           .from('profiles')
           .select('id, username, full_name, avatar_url, total_points')
@@ -43,7 +44,6 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
         
         if (localOnly) {
           // In a real app, you would filter by location/area
-          // For now we just limit the number of results
           query = query.limit(5);
         } else {
           query = query.limit(limit);
@@ -55,9 +55,9 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
           throw error;
         }
         
-        if (data) {
+        if (data && data.length > 0) {
           const leaderboardData = data.map((user, index) => {
-            // Use the helper function to get the correct avatar URL
+            // Use the helper function for consistent avatar URLs
             const avatarSrc = getAvatarSrc(user.avatar_url);
               
             return {

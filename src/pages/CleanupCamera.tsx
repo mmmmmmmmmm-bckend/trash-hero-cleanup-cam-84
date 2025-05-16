@@ -89,7 +89,12 @@ const CleanupCamera = () => {
       }
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' },
+        video: { 
+          facingMode: 'environment',
+          // Request lower resolution for better performance
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
         audio: false // Don't request audio permission until recording starts
       });
       
@@ -117,7 +122,7 @@ const CleanupCamera = () => {
     }
   };
 
-  // Object detection simulation
+  // Optimized object detection simulation with less frequent updates for better performance
   const startObjectDetection = () => {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
@@ -131,59 +136,57 @@ const CleanupCamera = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Set canvas to smaller dimensions for better performance
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      const canvasWidth = Math.min(480, video.videoWidth);
+      const canvasHeight = canvasWidth / aspectRatio;
       
-      // Draw the current video frame onto the canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
       
-      // Simulate AI detection with random boxes
-      // In a real app, this would use TensorFlow.js or another ML library
-      if (Math.random() > 0.3) { // 70% chance to detect something
+      // Draw the current video frame onto the canvas (scaled down)
+      ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+      
+      // Simulate AI detection - optimized to be less CPU intensive
+      if (Math.random() > 0.4) { // Reduce detection frequency
         const trashTypes = Object.keys(TRASH_TYPES);
         const randomTypeIndex = Math.floor(Math.random() * trashTypes.length);
         const randomType = trashTypes[randomTypeIndex];
         const randomConfidence = 75 + Math.floor(Math.random() * 20); // 75% to 95%
         
-        // Random position and size for detection box
-        const x = Math.floor(Math.random() * (canvas.width - 100));
-        const y = Math.floor(Math.random() * (canvas.height - 100));
-        const width = 50 + Math.floor(Math.random() * 100);
-        const height = 50 + Math.floor(Math.random() * 100);
+        // Simplified box calculation
+        const x = Math.floor(Math.random() * (canvas.width - 60));
+        const y = Math.floor(Math.random() * (canvas.height - 60));
+        const width = 40 + Math.floor(Math.random() * 60);
+        const height = 40 + Math.floor(Math.random() * 60);
         
-        // Draw detection box and label
+        // Draw detection box with simpler style
         ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.strokeRect(x, y, width, height);
         
-        // Background for label
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(x, y - 20, 120, 20);
-        
-        // Label text
-        ctx.font = '12px Arial';
+        // Simpler label drawing
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(x, y - 15, 100, 15);
+        ctx.font = '10px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(`${randomType} ${randomConfidence}%`, x + 5, y - 5);
+        ctx.fillText(`${randomType} ${randomConfidence}%`, x + 2, y - 3);
         
-        // Add to detections array for use in UI
+        // Update state with just one detection at a time for better performance
         setDetections([{
           type: randomType,
           confidence: randomConfidence,
           box: {x, y, width, height}
         }]);
         
-        // Update the current AI prediction for the UI
         setAiPrediction(randomType);
         setAiConfidence(randomConfidence);
-        
-        // Set classification data for environmental impact
         setTrashClassification(JSON.stringify(TRASH_TYPES[randomType]));
       }
     };
     
-    // Run detection every 500ms
-    detectionIntervalRef.current = setInterval(detectObjects, 500) as unknown as number;
+    // Reduced frequency for better performance (1 second interval)
+    detectionIntervalRef.current = setInterval(detectObjects, 1000) as unknown as number;
   };
 
   const stopObjectDetection = () => {
@@ -313,7 +316,7 @@ const CleanupCamera = () => {
         title: "AI Analysis Complete",
         description: `Detected: ${randomType} (${randomConfidence}% confidence) +${pointsEarned} points!`,
       });
-    }, 2000); // Simulate 2-second AI processing time
+    }, 1000); // Reduced time from 2 seconds to 1 second
   };
 
   const nextStep = () => {
@@ -441,6 +444,7 @@ const CleanupCamera = () => {
             </div>
           )}
           
+          {/* Always show UI during recording (fix for bug #2) */}
           {showUI && (
             <>
               {/* Recording indicator */}

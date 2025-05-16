@@ -27,9 +27,8 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState('avatar1');
   
-  // New state for profile picture upload
+  // Profile picture state
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -69,9 +68,6 @@ const Signup = () => {
       setProfilePicture(file);
       const objectUrl = URL.createObjectURL(file);
       setProfilePictureUrl(objectUrl);
-      
-      // Auto-switch from avatar selection to custom picture
-      setSelectedAvatar('');
     }
   };
 
@@ -137,8 +133,7 @@ const Signup = () => {
       const userData = {
         name,
         username,
-        phone: fullPhone,
-        avatar: selectedAvatar // Store the selected avatar ID or empty if using custom picture
+        phone: fullPhone
       };
 
       const { data, error } = await signUp(email, password, userData);
@@ -147,9 +142,9 @@ const Signup = () => {
       
       // Update profile with the avatar info
       if (data?.user) {
-        let avatarUrl = selectedAvatar;
+        let avatarUrl = null;
         
-        // If there's a custom profile picture, upload it
+        // If there's a profile picture, upload it
         if (profilePicture) {
           const uploadedUrl = await uploadProfilePicture(data.user.id);
           if (uploadedUrl) {
@@ -157,11 +152,13 @@ const Signup = () => {
           }
         }
         
-        // Update the profile with the avatar information
-        await supabase
-          .from('profiles')
-          .update({ avatar_url: avatarUrl })
-          .eq('id', data.user.id);
+        if (avatarUrl) {
+          // Update the profile with the avatar information
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: avatarUrl })
+            .eq('id', data.user.id);
+        }
       }
     } catch (error: any) {
       toast({
@@ -242,54 +239,12 @@ const Signup = () => {
             />
             
             {/* Profile Picture Upload Section */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Profile Picture</label>
-              <div className="flex gap-3 items-center">
-                <div className="flex-shrink-0">
-                  {profilePictureUrl ? (
-                    <Avatar className="w-16 h-16">
-                      <AvatarImage src={profilePictureUrl} alt="Profile Preview" />
-                      <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                      <User className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="profile-picture" className="cursor-pointer">
-                    <div className="flex gap-2 items-center p-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                      <Upload size={16} />
-                      <span className="text-sm">Upload Profile Picture</span>
-                    </div>
-                    <Input 
-                      id="profile-picture"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleProfilePictureChange}
-                      className="hidden"
-                    />
-                  </label>
-                  {profilePictureUrl && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Custom profile picture selected
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Avatar selection - only shown if no profile picture uploaded */}
-            {!profilePictureUrl && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Or choose an avatar</label>
-                <AvatarSelector
-                  selectedAvatar={selectedAvatar}
-                  onSelectAvatar={setSelectedAvatar}
-                />
-              </div>
-            )}
+            <AvatarSelector
+              selectedAvatar=""
+              onSelectAvatar={() => {}}
+              onFileChange={handleProfilePictureChange}
+              profilePictureUrl={profilePictureUrl}
+            />
             
             <Button type="submit" className="w-full" disabled={loading || uploading}>
               {loading ? 'Creating account...' : 'Create Account'}

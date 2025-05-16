@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
@@ -9,7 +10,6 @@ import LeaderboardCard from '../components/LeaderboardCard';
 import PointsBadge from '../components/PointsBadge';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { avatars } from '@/components/AvatarSelector';
 import { Button } from "@/components/ui/button";
 import AppTutorial from '@/components/AppTutorial';
 import FeatureGuide from '@/components/FeatureGuide';
@@ -36,10 +36,12 @@ const Index = () => {
       fetchLeaderboard();
     }
     
-    // Check if first visit to show tutorial
+    // Check if first visit to show tutorial - only once
     const hasSeenTutorial = localStorage.getItem('hasSeenAppTutorial');
     if (!hasSeenTutorial) {
       setShowTutorial(true);
+      // Set tutorial as seen right away to prevent showing again if page reloads
+      localStorage.setItem('hasSeenAppTutorial', 'true');
     }
   }, [user]);
 
@@ -98,7 +100,7 @@ const Index = () => {
 
   // Get avatar source based on avatar_url using our helper function
   const getUserAvatarSrc = () => {
-    if (!userProfile?.avatar_url) return avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
+    if (!userProfile?.avatar_url) return "https://i.pravatar.cc/150?img=5";
     
     // Use the imported getAvatarSrc helper function
     return getAvatarSrc(userProfile.avatar_url);

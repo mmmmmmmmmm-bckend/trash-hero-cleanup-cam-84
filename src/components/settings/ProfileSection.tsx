@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import AvatarSelector, { avatars } from '@/components/AvatarSelector';
+import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
+import AvatarSelector from '@/components/AvatarSelector';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileSectionProps {
@@ -34,7 +34,6 @@ interface ProfileSectionProps {
 const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({ ...profile });
-  const [selectedAvatar, setSelectedAvatar] = useState(profile.avatar_url);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -43,7 +42,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
   const handleStartEditing = () => {
     setIsEditing(true);
     setEditedProfile({ ...profile });
-    setSelectedAvatar(profile.avatar_url);
     setProfilePicturePreview(null);
   };
 
@@ -75,9 +73,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
       setProfilePicture(file);
       const objectUrl = URL.createObjectURL(file);
       setProfilePicturePreview(objectUrl);
-      
-      // Auto-switch from avatar selection
-      setSelectedAvatar('');
     }
   };
 
@@ -126,7 +121,7 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
     try {
       if (!user) return;
       
-      let avatarUrl = selectedAvatar;
+      let avatarUrl = profile.avatar_url;
       
       // If there's a new profile picture, upload it
       if (profilePicture) {
@@ -136,9 +131,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
           // Update the profile picture in AuthContext to sync across the app
           await updateProfilePicture(user.id, uploadedUrl);
         }
-      } else if (selectedAvatar !== profile.avatar_url) {
-        // If avatar was changed but not to a custom picture
-        await updateProfilePicture(user.id, selectedAvatar);
       }
       
       const { error } = await supabase
@@ -178,13 +170,10 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
     try {
       if (!user) return;
       
-      let avatarUrl = selectedAvatar;
-      
       // If there's a new profile picture, upload it
       if (profilePicture) {
         const uploadedUrl = await uploadProfilePicture();
         if (uploadedUrl) {
-          avatarUrl = uploadedUrl;
           // Update profile picture across the app
           await updateProfilePicture(user.id, uploadedUrl);
           
@@ -198,19 +187,6 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
             description: "Your profile picture has been updated successfully",
           });
         }
-      } else if (selectedAvatar !== profile.avatar_url) {
-        // Update with selected avatar
-        await updateProfilePicture(user.id, selectedAvatar);
-        
-        setProfile({
-          ...profile,
-          avatar_url: selectedAvatar
-        });
-        
-        toast({
-          title: "Profile picture updated",
-          description: "Your avatar has been updated successfully",
-        });
       }
     } catch (error: any) {
       toast({
@@ -225,22 +201,16 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
     setIsEditing(false);
     setProfilePicture(null);
     setProfilePicturePreview(null);
-    setSelectedAvatar(profile.avatar_url);
   };
 
-  // Helper function to determine if the avatar_url is a custom uploaded image or predefined avatar
-  const isCustomImage = (url: string) => {
-    return url && !url.startsWith('avatar');
-  };
-
-  // Determine what image to show
+  // Get image source - profile picture or fallback
   const getImageSource = () => {
     if (profilePicturePreview) {
       return profilePicturePreview;
-    } else if (isCustomImage(profile.avatar_url)) {
+    } else if (profile.avatar_url) {
       return profile.avatar_url;
     } else {
-      return avatars.find(a => a.id === profile.avatar_url)?.src || '/placeholder.svg';
+      return '/placeholder.svg';
     }
   };
 
@@ -274,37 +244,17 @@ const ProfileSection = ({ profile, setProfile, user, toast }: ProfileSectionProp
                 </Avatar>
               </div>
               
-              <label htmlFor="profile-picture-upload" className="cursor-pointer">
-                <div className="flex gap-2 items-center p-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                  <Upload size={16} />
-                  <span className="text-sm">Upload New Picture</span>
-                </div>
-                <Input 
-                  id="profile-picture-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePictureChange}
-                  className="hidden"
-                />
-              </label>
-              
-              <div className="text-center text-sm text-muted-foreground">
-                - or choose from avatars -
-              </div>
-              
-              <AvatarSelector 
-                selectedAvatar={selectedAvatar} 
-                onSelectAvatar={(avatarId) => {
-                  setSelectedAvatar(avatarId);
-                  setProfilePicturePreview(null);
-                  setProfilePicture(null);
-                }} 
+              <AvatarSelector
+                selectedAvatar=""
+                onSelectAvatar={() => {}}
+                onFileChange={handleProfilePictureChange}
+                profilePictureUrl={profilePicturePreview || profile.avatar_url}
               />
               
               <div className="flex justify-end gap-2 mt-4">
                 <Button 
                   onClick={handleProfilePictureUpdate}
-                  disabled={uploading}
+                  disabled={uploading || !profilePicture}
                 >
                   {uploading ? 'Saving...' : 'Save Changes'}
                 </Button>
