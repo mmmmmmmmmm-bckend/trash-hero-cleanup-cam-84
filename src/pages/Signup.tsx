@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Phone, Upload } from 'lucide-react';
@@ -172,12 +171,12 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 dark:from-primary/5 dark:to-accent/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
             <img 
-              src="/lovable-uploads/b7067255-97a6-42dd-8870-786af090bc03.png" 
+              src="/lovable-uploads/68e01b32-dd69-4dd9-93c9-b2819d01f53d.png" 
               alt="TrashHero Logo" 
               className="h-16 w-auto" 
             />
