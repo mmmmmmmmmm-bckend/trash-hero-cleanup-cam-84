@@ -25,6 +25,7 @@ const CleanupCamera = () => {
   const [trashWeight, setTrashWeight] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [location, setLocation] = useState('Unknown location');
+  const [step, setStep] = useState<'finding' | 'disposing'>('finding');
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -129,6 +130,15 @@ const CleanupCamera = () => {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasPhoto(false);
+  };
+  
+  const nextStep = () => {
+    if (step === 'finding') {
+      setStep('disposing');
+      clearPhoto();
+    } else {
+      saveCleanup();
+    }
   };
   
   const saveCleanup = async () => {
@@ -251,6 +261,13 @@ const CleanupCamera = () => {
         </div>
       </div>
       
+      {/* Step indicator */}
+      <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
+        <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm font-poppins">
+          {step === 'finding' ? 'Step 1: Find Trash' : 'Step 2: Dispose in Bin'}
+        </div>
+      </div>
+      
       {/* Camera view */}
       <div className="flex-1 relative overflow-hidden">
         <video 
@@ -281,20 +298,22 @@ const CleanupCamera = () => {
         </div>
       ) : (
         <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-full">
-              <Trash className="h-5 w-5 text-primary-foreground" />
+          {step === 'disposing' && (
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-full">
+                <Trash className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="flex-1">
+                <Input
+                  type="number"
+                  placeholder="Weight (kg)"
+                  className="bg-white/10 border-0 text-white placeholder-white/60"
+                  value={trashWeight}
+                  onChange={(e) => setTrashWeight(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="flex-1">
-              <Input
-                type="number"
-                placeholder="Weight (kg)"
-                className="bg-white/10 border-0 text-white placeholder-white/60"
-                value={trashWeight}
-                onChange={(e) => setTrashWeight(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
           
           <div className="flex gap-3 justify-center">
             <Button 
@@ -306,10 +325,10 @@ const CleanupCamera = () => {
             </Button>
             <Button 
               className="rounded-full flex-1"
-              onClick={saveCleanup}
+              onClick={nextStep}
               disabled={loading}
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Saving..." : step === 'finding' ? "Next" : "Save"}
             </Button>
           </div>
         </div>
@@ -322,13 +341,16 @@ const CleanupCamera = () => {
             <DialogTitle>How to record a cleanup</DialogTitle>
             <DialogDescription className="space-y-4 pt-4">
               <p>
-                1. Take a photo of the trash you've collected
+                1. Take a photo of the trash you've found
               </p>
               <p>
-                2. Enter the approximate weight in kilograms
+                2. Take a photo of the trash being disposed in the bin
               </p>
               <p>
-                3. Submit your cleanup to earn points
+                3. Enter the approximate weight in kilograms
+              </p>
+              <p>
+                4. Submit your cleanup to earn points
               </p>
               <p className="text-muted-foreground text-xs">
                 Your location is automatically recorded. Points are awarded based on the weight of trash collected.

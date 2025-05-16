@@ -34,14 +34,14 @@ const Header = ({ title, showBack = false }: HeaderProps) => {
         )}
         {isHomePage ? (
           <div className="flex items-center gap-2">
-            <img src="/lovable-uploads/b7067255-97a6-42dd-8870-786af090bc03.png" alt="TrashHero Logo" className="h-8 w-auto" />
-            <h1 className="font-bold text-2xl">
+            <img src="/lovable-uploads/68e01b32-dd69-4dd9-93c9-b2819d01f53d.png" alt="TrashHero Logo" className="h-8 w-auto" />
+            <h1 className="font-bold text-2xl font-poppins">
               <span className="text-[#1bd0af]">TRASH</span>
               <span className="text-gray-400">HERO</span>
             </h1>
           </div>
         ) : (
-          <h1 className="font-bold text-xl">{title}</h1>
+          <h1 className="font-bold text-xl font-poppins">{title}</h1>
         )}
       </div>
       <div className="flex items-center gap-2">
