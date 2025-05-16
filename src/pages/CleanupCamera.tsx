@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, Info, Video, Pause, Play, CircleCheck, Trash } from 'lucide-react';
@@ -16,42 +17,70 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 
-// Simulated trash types data
+// Enhanced trash types data with more detailed information
 const trashTypes = [
   { 
     type: 'Plastic Bottle', 
     impact: 'Takes 450 years to decompose. Releases microplastics into water systems.',
     recycling: 'Widely recyclable in most areas. Reduces petroleum usage.',
+    keywords: ['bottle', 'plastic', 'container', 'drink', 'soda', 'water'],
+    confidence_threshold: 0.75
   },
   { 
     type: 'Paper Waste', 
     impact: 'Biodegrades in 2-6 weeks. Lower impact but contributes to deforestation.',
     recycling: 'Easily recyclable. Reduces need for tree harvesting.',
+    keywords: ['paper', 'cardboard', 'box', 'carton', 'tissue', 'newspaper'],
+    confidence_threshold: 0.70
   },
   { 
     type: 'Aluminum Can', 
     impact: '80-100 years to decompose. Mining causes soil degradation and water pollution.',
     recycling: 'Infinitely recyclable with no quality loss. Saves 95% of energy vs. new production.',
+    keywords: ['can', 'aluminum', 'metal', 'beverage', 'soda', 'beer'],
+    confidence_threshold: 0.80
   },
   { 
     type: 'Glass Bottle', 
     impact: 'Never fully decomposes. Low toxicity but physical hazard to wildlife.',
     recycling: '100% recyclable without quality loss. Reduces sand mining impact.',
+    keywords: ['glass', 'bottle', 'jar', 'container', 'transparent'],
+    confidence_threshold: 0.75
   },
   { 
     type: 'Food Waste', 
     impact: 'Decomposes in 2-6 weeks. Produces methane in landfills, a potent greenhouse gas.',
     recycling: 'Compostable. Creates nutrient-rich soil when properly processed.',
+    keywords: ['food', 'organic', 'compost', 'fruit', 'vegetable', 'leftover'],
+    confidence_threshold: 0.65
   },
   { 
     type: 'Styrofoam', 
     impact: 'Never fully decomposes. Contains carcinogenic chemicals that leach into soil.',
     recycling: 'Difficult to recycle. Should be avoided when possible.',
+    keywords: ['styrofoam', 'foam', 'cup', 'packaging', 'polystyrene'],
+    confidence_threshold: 0.80
   },
   { 
     type: 'Electronic Waste', 
     impact: 'Contains heavy metals and toxic chemicals that contaminate soil and water.',
     recycling: 'Requires specialized recycling. Contains valuable recoverable materials.',
+    keywords: ['electronic', 'battery', 'device', 'cable', 'charger', 'phone'],
+    confidence_threshold: 0.80
+  },
+  { 
+    type: 'Plastic Bag', 
+    impact: 'Takes 20-1000 years to decompose. Often ingested by marine animals.',
+    recycling: 'Difficult to recycle but can be reused. Better alternatives exist.',
+    keywords: ['bag', 'plastic', 'shopping', 'wrapper', 'film'],
+    confidence_threshold: 0.70
+  },
+  {
+    type: 'Cigarette Butt',
+    impact: 'Takes 10+ years to decompose. Contains toxic chemicals and microplastics.',
+    recycling: 'Not recyclable. Proper disposal prevents wildlife harm.',
+    keywords: ['cigarette', 'butt', 'filter', 'tobacco'],
+    confidence_threshold: 0.85
   }
 ];
 
@@ -60,6 +89,7 @@ const CleanupCamera = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const detectionIntervalRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // Camera states
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
@@ -72,6 +102,7 @@ const CleanupCamera = () => {
   const [detectionStatus, setDetectionStatus] = useState<'none' | 'detecting' | 'detected' | 'verified'>('none');
   const [detectionProgress, setDetectionProgress] = useState(0);
   const [detectionMessage, setDetectionMessage] = useState('');
+  const [boundingBoxes, setBoundingBoxes] = useState<{x: number, y: number, width: number, height: number, label: string}[]>([]);
   const [trashAnalysis, setTrashAnalysis] = useState<{
     type: string;
     confidence: number;
@@ -190,32 +221,98 @@ const CleanupCamera = () => {
     }
   };
   
-  // Simulate AI trash detection
+  // Enhanced AI trash detection with image processing simulation
   const startDetection = () => {
     setDetectionStatus('detecting');
-    setDetectionMessage('Analyzing trash...');
+    setDetectionMessage('Analyzing environment...');
     setDetectionProgress(0);
+    setBoundingBoxes([]);
     
+    // Simulate frame analysis during detection
+    const analyzeFrames = () => {
+      if (!videoRef.current || !canvasRef.current) return;
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      
+      // Match canvas size to video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw current video frame to canvas for "analysis"
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Clear previous bounding boxes
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    };
+    
+    // Start simulated detection process with progressive updates
     detectionIntervalRef.current = window.setInterval(() => {
       setDetectionProgress(prevProgress => {
-        const newProgress = prevProgress + 5;
+        const newProgress = prevProgress + 2; // Faster progress for better UX
         
-        // Simulate trash detection logic
+        // Simulate detection phases
+        if (newProgress === 20) {
+          setDetectionMessage('Identifying objects...');
+          analyzeFrames();
+        } else if (newProgress === 40) {
+          setDetectionMessage('Classifying materials...');
+        } else if (newProgress === 60) {
+          setDetectionMessage('Determining object type...');
+          // Add simulated bounding box for detected trash
+          if (step === 'finding') {
+            const videoWidth = videoRef.current?.videoWidth || 640;
+            const videoHeight = videoRef.current?.videoHeight || 480;
+            
+            // Generate 1-3 random bounding boxes to simulate multiple detected objects
+            const boxCount = Math.floor(Math.random() * 3) + 1;
+            const newBoxes = [];
+            
+            for (let i = 0; i < boxCount; i++) {
+              const width = Math.floor(videoWidth * (0.2 + Math.random() * 0.3));
+              const height = Math.floor(videoHeight * (0.2 + Math.random() * 0.3));
+              const x = Math.floor(Math.random() * (videoWidth - width));
+              const y = Math.floor(Math.random() * (videoHeight - height));
+              
+              // Select a random trash type for each box
+              const randomTrashType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+              
+              newBoxes.push({
+                x, y, width, height,
+                label: randomTrashType.type
+              });
+            }
+            
+            setBoundingBoxes(newBoxes);
+          }
+        } else if (newProgress === 80) {
+          setDetectionMessage('Analyzing environmental impact...');
+        }
+        
+        // Completion logic
         if (newProgress >= 100) {
           if (step === 'finding') {
-            // Generate a random trash analysis
-            const randomTrashType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
-            const confidence = Math.random() * 30 + 70; // Between 70% and 100%
+            // Select the most prominent detected object (first one for simplicity)
+            const primaryBox = boundingBoxes[0];
+            const matchedTrashType = primaryBox ? 
+              trashTypes.find(t => t.type === primaryBox.label) : 
+              trashTypes[Math.floor(Math.random() * trashTypes.length)];
+            
+            const confidence = Math.random() * 
+              (1 - (matchedTrashType?.confidence_threshold || 0.7)) + 
+              (matchedTrashType?.confidence_threshold || 0.7);
             
             setTrashAnalysis({
-              type: randomTrashType.type,
-              confidence: parseFloat(confidence.toFixed(1)),
-              impact: randomTrashType.impact,
-              recycling: randomTrashType.recycling
+              type: matchedTrashType?.type || "Unknown",
+              confidence: parseFloat(confidence.toFixed(1)) * 100,
+              impact: matchedTrashType?.impact || "Unknown impact",
+              recycling: matchedTrashType?.recycling || "Unknown recycling information"
             });
             
             setDetectionStatus('detected');
-            setDetectionMessage(`Detected: ${randomTrashType.type}`);
+            setDetectionMessage(`Detected: ${matchedTrashType?.type || "Unknown"}`);
             clearInterval(detectionIntervalRef.current!);
           } else {
             setDetectionStatus('verified');
@@ -226,7 +323,7 @@ const CleanupCamera = () => {
         
         return newProgress > 100 ? 100 : newProgress;
       });
-    }, 50); // Speed up the detection a bit for better UX
+    }, 50);
   };
   
   const stopDetection = () => {
@@ -241,7 +338,7 @@ const CleanupCamera = () => {
     setRecordedVideo(null);
     setDetectionStatus('none');
     setDetectionProgress(0);
-    setTrashAnalysis(null);
+    setBoundingBoxes([]);
   };
   
   const nextStep = () => {
@@ -254,10 +351,10 @@ const CleanupCamera = () => {
   };
   
   const saveCleanup = async () => {
-    if (!user || !recordedVideo) {
+    if (!user || !trashAnalysis) {
       toast({
         title: "Error",
-        description: "Please record a video first",
+        description: "Missing user information or trash analysis",
         variant: "destructive"
       });
       return;
@@ -267,7 +364,7 @@ const CleanupCamera = () => {
     
     try {
       // Convert weight to number
-      const weightKg = parseFloat(trashWeight);
+      const weightKg = parseFloat(trashWeight || "0.1");
       if (isNaN(weightKg)) {
         throw new Error("Please enter a valid weight");
       }
@@ -275,23 +372,15 @@ const CleanupCamera = () => {
       // Calculate points (10 points per kg)
       const points = Math.round(weightKg * 10);
       
-      // In a real implementation, we would upload the recorded video
-      // For now, we'll use a simulated approach
-      
-      // Simulate file upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Insert cleanup record with the correct schema structure
-      // Using a placeholder for the location field to match required schema
+      // Create cleanup record matching the database schema
       const { data, error } = await supabase
         .from('cleanups')
         .insert({
           user_id: user.id,
-          location: trashAnalysis?.type || 'Unknown location', // Required field
+          location: trashAnalysis.type || 'Unknown trash', // Use trash type as location identifier
           trash_weight_kg: weightKg,
-          points,
-          verified: true,
-          // Note: trash_type and ai_verified aren't in the schema, so we don't include them
+          points: points,
+          verified: true
         });
       
       if (error) {
@@ -322,6 +411,40 @@ const CleanupCamera = () => {
   const handleSuccessClose = () => {
     setShowSuccess(false);
     navigate('/');
+  };
+
+  // Function to render detection boxes
+  const renderBoundingBoxes = () => {
+    if (!videoRef.current || boundingBoxes.length === 0 || !isRecording) return null;
+    
+    const videoWidth = videoRef.current.clientWidth;
+    const videoHeight = videoRef.current.clientHeight;
+    
+    return boundingBoxes.map((box, index) => {
+      // Scale boxes to fit the video element's display size
+      const scaledX = (box.x / (videoRef.current?.videoWidth || 640)) * videoWidth;
+      const scaledY = (box.y / (videoRef.current?.videoHeight || 480)) * videoHeight;
+      const scaledWidth = (box.width / (videoRef.current?.videoWidth || 640)) * videoWidth;
+      const scaledHeight = (box.height / (videoRef.current?.videoHeight || 480)) * videoHeight;
+      
+      return (
+        <div 
+          key={`box-${index}`}
+          className="absolute border-2 border-green-500 flex flex-col justify-end"
+          style={{
+            left: `${scaledX}px`,
+            top: `${scaledY}px`,
+            width: `${scaledWidth}px`,
+            height: `${scaledHeight}px`,
+            pointerEvents: 'none'
+          }}
+        >
+          <div className="bg-green-500 text-white text-xs px-1 py-0.5 max-w-full truncate">
+            {box.label}
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
@@ -381,16 +504,25 @@ const CleanupCamera = () => {
       {/* Camera/Video view */}
       <div className="flex-1 relative w-full h-full overflow-hidden">
         {!showPreview ? (
-          <video 
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="absolute inset-0 min-h-full min-w-full object-cover"
-            style={{ 
-              transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none',
-            }}
-          />
+          <>
+            <video 
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 min-h-full min-w-full object-cover"
+              style={{ 
+                transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none',
+              }}
+            />
+            <canvas 
+              ref={canvasRef} 
+              className="absolute inset-0 pointer-events-none z-[1]"
+              style={{ display: 'none' }} // Hidden canvas for processing
+            />
+            {/* Render detection bounding boxes */}
+            {renderBoundingBoxes()}
+          </>
         ) : (
           <video
             src={recordedVideo || undefined}
