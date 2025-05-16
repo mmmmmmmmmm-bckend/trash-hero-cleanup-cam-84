@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -199,7 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      return { data, error: null }; // Return an object with data and null error
+      // No need to return anything since our interface specifies void
+      return;
     } catch (error: any) {
       throw error; // Throw the error to be caught in the component
     } finally {
