@@ -25,5 +25,8 @@ const setInitialTheme = () => {
 setInitialTheme();
 
 createRoot(document.getElementById("root")!).render(
-  <App />
+  <>
+    <App />
+    <Toaster />
+  </>
 );
