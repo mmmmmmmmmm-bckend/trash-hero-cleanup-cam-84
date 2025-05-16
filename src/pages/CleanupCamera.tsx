@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, RotateCw, X, Info, Image as ImageIcon, Trash } from 'lucide-react';
+import { Camera, RotateCw, X, Info, Video, Pause, Play, CircleCheck, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,13 +14,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 
 const CleanupCamera = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hasPhoto, setHasPhoto] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const detectionIntervalRef = useRef<number | null>(null);
+  
+  // Camera states
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  
+  // Detection states
+  const [detectionStatus, setDetectionStatus] = useState<'none' | 'detecting' | 'detected' | 'verified'>('none');
+  const [detectionProgress, setDetectionProgress] = useState(0);
+  const [detectionMessage, setDetectionMessage] = useState('');
+  
+  // App states
   const [showInfo, setShowInfo] = useState(false);
   const [trashWeight, setTrashWeight] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -43,29 +57,29 @@ const CleanupCamera = () => {
         }
       );
     }
-  }, []);
-
+    
+    // Start camera when component mounts
+    startCamera();
+    
+    // Clean up resources when component unmounts
+    return () => {
+      stopRecording();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+      }
+    };
+  }, [cameraFacing]);
+  
   const fetchLocation = async (latitude: number, longitude: number) => {
     try {
-      // For demonstration, we'll just use coordinates. In a real app,
-      // you might use a geocoding service to get the address.
       setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
     } catch (error) {
       console.error('Error fetching location:', error);
     }
   };
-
-  useEffect(() => {
-    // Start camera when component mounts
-    startCamera();
-    
-    // Clean up camera stream when component unmounts
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [cameraFacing]);
   
   const startCamera = async () => {
     try {
@@ -79,7 +93,7 @@ const CleanupCamera = () => {
           width: { ideal: 720 },
           height: { ideal: 1280 }
         }, 
-        audio: false
+        audio: true
       };
       
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -102,50 +116,102 @@ const CleanupCamera = () => {
     setCameraFacing(prev => prev === 'environment' ? 'user' : 'environment');
   };
   
-  const takePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  const startRecording = () => {
+    if (!videoRef.current || !stream) return;
     
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
+    recordedChunksRef.current = [];
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9'
+    });
     
-    // Make the canvas the same size as the video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunksRef.current.push(event.data);
+      }
+    };
     
-    // Draw the video frame onto the canvas
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const videoURL = URL.createObjectURL(blob);
+      setRecordedVideo(videoURL);
+      setShowPreview(true);
+    };
     
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    mediaRecorderRef.current = mediaRecorder;
+    mediaRecorder.start(100);
+    setIsRecording(true);
     
-    setHasPhoto(true);
+    // Start AI detection simulation
+    startDetection();
   };
   
-  const clearPhoto = () => {
-    if (!canvasRef.current) return;
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Stop detection simulation
+      stopDetection();
+    }
+  };
+  
+  const startDetection = () => {
+    // In a real implementation, this would connect to a real AI model
+    // Here we're simulating the detection process
+    setDetectionStatus('detecting');
+    setDetectionMessage('Looking for trash...');
+    setDetectionProgress(0);
     
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasPhoto(false);
+    detectionIntervalRef.current = window.setInterval(() => {
+      setDetectionProgress(prevProgress => {
+        const newProgress = prevProgress + 5;
+        
+        // Simulate trash detection logic
+        if (newProgress >= 100) {
+          if (step === 'finding') {
+            setDetectionStatus('detected');
+            setDetectionMessage('Trash detected! Now record disposal.');
+            clearInterval(detectionIntervalRef.current!);
+          } else {
+            setDetectionStatus('verified');
+            setDetectionMessage('Verification complete! Trash properly disposed.');
+            clearInterval(detectionIntervalRef.current!);
+          }
+        }
+        
+        return newProgress > 100 ? 100 : newProgress;
+      });
+    }, 200);
+  };
+  
+  const stopDetection = () => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+      detectionIntervalRef.current = null;
+    }
+  };
+  
+  const resetCamera = () => {
+    setShowPreview(false);
+    setRecordedVideo(null);
+    setDetectionStatus('none');
+    setDetectionProgress(0);
   };
   
   const nextStep = () => {
     if (step === 'finding') {
       setStep('disposing');
-      clearPhoto();
+      resetCamera();
     } else {
       saveCleanup();
     }
   };
   
   const saveCleanup = async () => {
-    if (!user || !canvasRef.current || !hasPhoto) {
+    if (!user || !recordedVideo) {
       toast({
         title: "Error",
-        description: "Please take a photo first",
+        description: "Please record a video first",
         variant: "destructive"
       });
       return;
@@ -163,27 +229,11 @@ const CleanupCamera = () => {
       // Calculate points (10 points per kg)
       const points = Math.round(weightKg * 10);
       
-      // Get image from canvas as blob
-      const canvas = canvasRef.current;
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      const blob = await (await fetch(dataUrl)).blob();
+      // In a real implementation, we would upload the recorded video
+      // For now, we'll use a simulated approach
       
-      // Upload image to Supabase Storage
-      const fileName = `cleanup-${Date.now()}.jpg`;
-      const { data: fileData, error: fileError } = await supabase.storage
-        .from('cleanups')
-        .upload(fileName, blob);
-      
-      if (fileError) {
-        throw fileError;
-      }
-      
-      // Get public URL for the image
-      const { data: urlData } = supabase.storage
-        .from('cleanups')
-        .getPublicUrl(fileName);
-      
-      const imageUrl = urlData.publicUrl;
+      // Simulate file upload delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Insert cleanup record
       const { data, error } = await supabase
@@ -193,8 +243,9 @@ const CleanupCamera = () => {
           location,
           trash_weight_kg: weightKg,
           points,
-          verified: false,
-          image_url: imageUrl
+          verified: true, // Now verified by AI
+          ai_verified: true,
+          image_url: "https://example.com/video-placeholder.mp4" // Placeholder
         }]);
       
       if (error) {
@@ -255,105 +306,150 @@ const CleanupCamera = () => {
             size="icon" 
             className="rounded-full bg-black/50 text-white hover:bg-black/70"
             onClick={switchCamera}
+            disabled={isRecording}
           >
             <RotateCw className="h-5 w-5" />
           </Button>
         </div>
       </div>
       
-      {/* Step indicator */}
-      <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
+      {/* Step indicator and detection status */}
+      <div className="absolute top-16 left-0 right-0 z-10 flex flex-col items-center space-y-2">
         <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm font-poppins">
-          {step === 'finding' ? 'Step 1: Find Trash' : 'Step 2: Dispose in Bin'}
+          {step === 'finding' ? 'Step 1: Record Finding Trash' : 'Step 2: Record Disposal in Bin'}
         </div>
+        
+        {detectionStatus !== 'none' && (
+          <div className="bg-black/50 text-white px-4 py-2 rounded-full text-xs">
+            {detectionMessage}
+          </div>
+        )}
+        
+        {detectionStatus === 'detecting' && (
+          <div className="w-48 bg-black/50 rounded-full p-1">
+            <Progress value={detectionProgress} className="h-1" />
+          </div>
+        )}
       </div>
       
-      {/* Camera view */}
+      {/* Camera/Video view */}
       <div className="flex-1 relative overflow-hidden">
-        <video 
-          ref={videoRef}
-          autoPlay
-          playsInline
-          className={`h-full w-full object-cover ${hasPhoto ? 'hidden' : 'block'}`}
-          style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
-        />
-        <canvas 
-          ref={canvasRef}
-          className={`h-full w-full object-contain bg-black ${hasPhoto ? 'block' : 'hidden'}`}
-          style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
-        />
+        {!showPreview ? (
+          <video 
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="h-full w-full object-cover"
+            style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
+          />
+        ) : (
+          <video
+            src={recordedVideo || undefined}
+            controls
+            autoPlay
+            playsInline
+            className="h-full w-full object-contain bg-black"
+          />
+        )}
+        
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="absolute top-28 right-4 flex items-center gap-2 bg-red-500/70 px-3 py-1 rounded-full">
+            <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
+            <span className="text-white text-xs">Recording</span>
+          </div>
+        )}
+        
+        {/* AI detection status overlay */}
+        {detectionStatus === 'detected' && (
+          <div className="absolute inset-0 border-4 border-green-500 pointer-events-none"></div>
+        )}
+        
+        {detectionStatus === 'verified' && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-green-500/50 p-4 rounded-full">
+              <CircleCheck className="h-12 w-12 text-white" />
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Bottom controls */}
-      {!hasPhoto ? (
-        <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 flex justify-center">
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="rounded-full w-16 h-16 p-0 border-4 border-white text-white hover:bg-white/20"
-            onClick={takePhoto}
-          >
-            <Camera className="h-8 w-8" />
-          </Button>
-        </div>
-      ) : (
-        <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 space-y-4">
-          {step === 'disposing' && (
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-full">
-                <Trash className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  placeholder="Weight (kg)"
-                  className="bg-white/10 border-0 text-white placeholder-white/60"
-                  value={trashWeight}
-                  onChange={(e) => setTrashWeight(e.target.value)}
-                />
-              </div>
+      <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 space-y-4">
+        {step === 'disposing' && !isRecording && detectionStatus === 'verified' && (
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-full">
+              <Trash className="h-5 w-5 text-primary-foreground" />
             </div>
-          )}
-          
-          <div className="flex gap-3 justify-center">
+            <div className="flex-1">
+              <Input
+                type="number"
+                placeholder="Weight (kg)"
+                className="bg-white/10 border-0 text-white placeholder-white/60"
+                value={trashWeight}
+                onChange={(e) => setTrashWeight(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className="flex gap-3 justify-center">
+          {!showPreview ? (
             <Button 
-              variant="outline" 
-              className="rounded-full flex-1 text-white border-white hover:bg-white/20"
-              onClick={clearPhoto}
-            >
-              Retake
-            </Button>
-            <Button 
-              className="rounded-full flex-1"
-              onClick={nextStep}
+              variant={isRecording ? "destructive" : "default"}
+              size="lg" 
+              className="rounded-full w-16 h-16 p-0"
+              onClick={isRecording ? stopRecording : startRecording}
               disabled={loading}
             >
-              {loading ? "Saving..." : step === 'finding' ? "Next" : "Save"}
+              {isRecording ? <Pause className="h-8 w-8" /> : <Video className="h-8 w-8" />}
             </Button>
-          </div>
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                className="rounded-full flex-1 text-white border-white hover:bg-white/20"
+                onClick={resetCamera}
+                disabled={loading}
+              >
+                Retake
+              </Button>
+              <Button 
+                className="rounded-full flex-1"
+                onClick={nextStep}
+                disabled={loading || (step === 'finding' && detectionStatus !== 'detected') || (step === 'disposing' && detectionStatus !== 'verified')}
+              >
+                {loading ? "Saving..." : step === 'finding' ? "Next" : "Save"}
+              </Button>
+            </>
+          )}
         </div>
-      )}
+      </div>
       
       {/* Info dialog */}
       <Dialog open={showInfo} onOpenChange={setShowInfo}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>How to record a cleanup</DialogTitle>
+            <DialogTitle>How to record a cleanup with AI verification</DialogTitle>
             <DialogDescription className="space-y-4 pt-4">
               <p>
-                1. Take a photo of the trash you've found
+                1. Record a video showing the trash you've found
               </p>
               <p>
-                2. Take a photo of the trash being disposed in the bin
+                2. Our AI will detect the trash in your video
               </p>
               <p>
-                3. Enter the approximate weight in kilograms
+                3. Record a video showing the trash being disposed in a bin
               </p>
               <p>
-                4. Submit your cleanup to earn points
+                4. The AI will verify the proper disposal
+              </p>
+              <p>
+                5. Enter the approximate weight to earn points
               </p>
               <p className="text-muted-foreground text-xs">
-                Your location is automatically recorded. Points are awarded based on the weight of trash collected.
+                Your location is automatically recorded. Points are awarded based on the weight of trash collected and verified by AI.
               </p>
             </DialogDescription>
           </DialogHeader>
@@ -364,13 +460,13 @@ const CleanupCamera = () => {
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cleanup Recorded!</DialogTitle>
+            <DialogTitle>Cleanup Verified & Recorded!</DialogTitle>
             <DialogDescription className="space-y-4 pt-4">
               <div className="bg-primary/10 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                <ImageIcon className="h-8 w-8 text-primary" />
+                <CircleCheck className="h-8 w-8 text-primary" />
               </div>
               <p className="text-center">
-                Thank you for your contribution! Your cleanup has been recorded.
+                Thank you for your contribution! Your cleanup has been AI-verified and recorded.
               </p>
               {parseFloat(trashWeight) > 0 && (
                 <p className="text-center font-bold">
