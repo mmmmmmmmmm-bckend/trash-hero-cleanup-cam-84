@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, RotateCw, X, Info, Video, Pause, Play, CircleCheck, Trash } from 'lucide-react';
+import { Camera, X, Info, Video, Pause, Play, CircleCheck, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,45 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 
+// Simulated trash types data
+const trashTypes = [
+  { 
+    type: 'Plastic Bottle', 
+    impact: 'Takes 450 years to decompose. Releases microplastics into water systems.',
+    recycling: 'Widely recyclable in most areas. Reduces petroleum usage.',
+  },
+  { 
+    type: 'Paper Waste', 
+    impact: 'Biodegrades in 2-6 weeks. Lower impact but contributes to deforestation.',
+    recycling: 'Easily recyclable. Reduces need for tree harvesting.',
+  },
+  { 
+    type: 'Aluminum Can', 
+    impact: '80-100 years to decompose. Mining causes soil degradation and water pollution.',
+    recycling: 'Infinitely recyclable with no quality loss. Saves 95% of energy vs. new production.',
+  },
+  { 
+    type: 'Glass Bottle', 
+    impact: 'Never fully decomposes. Low toxicity but physical hazard to wildlife.',
+    recycling: '100% recyclable without quality loss. Reduces sand mining impact.',
+  },
+  { 
+    type: 'Food Waste', 
+    impact: 'Decomposes in 2-6 weeks. Produces methane in landfills, a potent greenhouse gas.',
+    recycling: 'Compostable. Creates nutrient-rich soil when properly processed.',
+  },
+  { 
+    type: 'Styrofoam', 
+    impact: 'Never fully decomposes. Contains carcinogenic chemicals that leach into soil.',
+    recycling: 'Difficult to recycle. Should be avoided when possible.',
+  },
+  { 
+    type: 'Electronic Waste', 
+    impact: 'Contains heavy metals and toxic chemicals that contaminate soil and water.',
+    recycling: 'Requires specialized recycling. Contains valuable recoverable materials.',
+  }
+];
+
 const CleanupCamera = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -29,35 +68,28 @@ const CleanupCamera = () => {
   const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   
-  // Detection states
+  // AI Detection states
   const [detectionStatus, setDetectionStatus] = useState<'none' | 'detecting' | 'detected' | 'verified'>('none');
   const [detectionProgress, setDetectionProgress] = useState(0);
   const [detectionMessage, setDetectionMessage] = useState('');
+  const [trashAnalysis, setTrashAnalysis] = useState<{
+    type: string;
+    confidence: number;
+    impact: string;
+    recycling: string;
+  } | null>(null);
   
   // App states
   const [showInfo, setShowInfo] = useState(false);
   const [trashWeight, setTrashWeight] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [location, setLocation] = useState('Unknown location');
   const [step, setStep] = useState<'finding' | 'disposing'>('finding');
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-
+  
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const { latitude, longitude } = position.coords;
-          fetchLocation(latitude, longitude);
-        },
-        error => {
-          console.error("Error getting location: ", error);
-        }
-      );
-    }
-    
     // Start camera when component mounts
     startCamera();
     
@@ -73,14 +105,6 @@ const CleanupCamera = () => {
     };
   }, [cameraFacing]);
   
-  const fetchLocation = async (latitude: number, longitude: number) => {
-    try {
-      setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-    } catch (error) {
-      console.error('Error fetching location:', error);
-    }
-  };
-  
   const startCamera = async () => {
     try {
       if (stream) {
@@ -93,7 +117,7 @@ const CleanupCamera = () => {
           width: { ideal: 720 },
           height: { ideal: 1280 }
         }, 
-        audio: true
+        audio: false // Disable audio recording
       };
       
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -155,11 +179,10 @@ const CleanupCamera = () => {
     }
   };
   
+  // Simulate AI trash detection
   const startDetection = () => {
-    // In a real implementation, this would connect to a real AI model
-    // Here we're simulating the detection process
     setDetectionStatus('detecting');
-    setDetectionMessage('Looking for trash...');
+    setDetectionMessage('Analyzing trash...');
     setDetectionProgress(0);
     
     detectionIntervalRef.current = window.setInterval(() => {
@@ -169,8 +192,19 @@ const CleanupCamera = () => {
         // Simulate trash detection logic
         if (newProgress >= 100) {
           if (step === 'finding') {
+            // Generate a random trash analysis
+            const randomTrashType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+            const confidence = Math.random() * 30 + 70; // Between 70% and 100%
+            
+            setTrashAnalysis({
+              type: randomTrashType.type,
+              confidence: parseFloat(confidence.toFixed(1)),
+              impact: randomTrashType.impact,
+              recycling: randomTrashType.recycling
+            });
+            
             setDetectionStatus('detected');
-            setDetectionMessage('Trash detected! Now record disposal.');
+            setDetectionMessage(`Detected: ${randomTrashType.type}`);
             clearInterval(detectionIntervalRef.current!);
           } else {
             setDetectionStatus('verified');
@@ -181,7 +215,7 @@ const CleanupCamera = () => {
         
         return newProgress > 100 ? 100 : newProgress;
       });
-    }, 200);
+    }, 50); // Speed up the detection a bit for better UX
   };
   
   const stopDetection = () => {
@@ -196,6 +230,7 @@ const CleanupCamera = () => {
     setRecordedVideo(null);
     setDetectionStatus('none');
     setDetectionProgress(0);
+    setTrashAnalysis(null);
   };
   
   const nextStep = () => {
@@ -240,10 +275,10 @@ const CleanupCamera = () => {
         .from('cleanups')
         .insert([{
           user_id: user.id,
-          location,
+          trash_type: trashAnalysis?.type || 'Unknown',
           trash_weight_kg: weightKg,
           points,
-          verified: true, // Now verified by AI
+          verified: true,
           ai_verified: true,
           image_url: "https://example.com/video-placeholder.mp4" // Placeholder
         }]);
@@ -308,14 +343,14 @@ const CleanupCamera = () => {
             onClick={switchCamera}
             disabled={isRecording}
           >
-            <RotateCw className="h-5 w-5" />
+            <Camera className="h-5 w-5" />
           </Button>
         </div>
       </div>
       
       {/* Step indicator and detection status */}
       <div className="absolute top-16 left-0 right-0 z-10 flex flex-col items-center space-y-2">
-        <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm font-poppins">
+        <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm">
           {step === 'finding' ? 'Step 1: Record Finding Trash' : 'Step 2: Record Disposal in Bin'}
         </div>
         
@@ -373,6 +408,23 @@ const CleanupCamera = () => {
             </div>
           </div>
         )}
+        
+        {/* Trash analysis overlay */}
+        {trashAnalysis && showPreview && step === 'finding' && (
+          <div className="absolute bottom-32 left-4 right-4 bg-black/70 p-4 rounded-lg text-white">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold">AI Analysis</h3>
+              <span className="text-sm bg-primary/20 text-primary px-2 py-1 rounded-full">
+                {trashAnalysis.confidence}% confidence
+              </span>
+            </div>
+            <div className="space-y-2 text-sm">
+              <p><span className="font-semibold">Type:</span> {trashAnalysis.type}</p>
+              <p><span className="font-semibold">Environmental Impact:</span> {trashAnalysis.impact}</p>
+              <p><span className="font-semibold">Recycling:</span> {trashAnalysis.recycling}</p>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Bottom controls */}
@@ -380,7 +432,7 @@ const CleanupCamera = () => {
         {step === 'disposing' && !isRecording && detectionStatus === 'verified' && (
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-full">
-              <Trash className="h-5 w-5 text-primary-foreground" />
+              <Trash className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
               <Input
@@ -431,13 +483,13 @@ const CleanupCamera = () => {
       <Dialog open={showInfo} onOpenChange={setShowInfo}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>How to record a cleanup with AI verification</DialogTitle>
+            <DialogTitle>AI Trash Detection</DialogTitle>
             <DialogDescription className="space-y-4 pt-4">
               <p>
                 1. Record a video showing the trash you've found
               </p>
               <p>
-                2. Our AI will detect the trash in your video
+                2. Our AI will detect the trash type and environmental impact
               </p>
               <p>
                 3. Record a video showing the trash being disposed in a bin
@@ -449,7 +501,7 @@ const CleanupCamera = () => {
                 5. Enter the approximate weight to earn points
               </p>
               <p className="text-muted-foreground text-xs">
-                Your location is automatically recorded. Points are awarded based on the weight of trash collected and verified by AI.
+                Points are awarded based on the weight of trash collected and verified by AI.
               </p>
             </DialogDescription>
           </DialogHeader>
@@ -468,6 +520,11 @@ const CleanupCamera = () => {
               <p className="text-center">
                 Thank you for your contribution! Your cleanup has been AI-verified and recorded.
               </p>
+              {trashAnalysis && (
+                <div className="bg-muted p-3 rounded-md text-sm">
+                  <p><span className="font-semibold">Trash Type:</span> {trashAnalysis.type}</p>
+                </div>
+              )}
               {parseFloat(trashWeight) > 0 && (
                 <p className="text-center font-bold">
                   You earned {Math.round(parseFloat(trashWeight) * 10)} points!
