@@ -41,7 +41,15 @@ const Header = ({ title, showBack = false }: HeaderProps) => {
             </h1>
           </div>
         ) : (
-          <h1 className="font-bold text-xl font-poppins">{title}</h1>
+          <div className="flex items-center gap-2">
+            <img src="/lovable-uploads/68e01b32-dd69-4dd9-93c9-b2819d01f53d.png" alt="TrashHero Logo" className="h-6 w-auto" />
+            <h1 className="font-bold text-xl font-poppins">{title || (
+              <>
+                <span className="text-[#1bd0af]">TRASH</span>
+                <span className="text-gray-400">HERO</span>
+              </>
+            )}</h1>
+          </div>
         )}
       </div>
       <div className="flex items-center gap-2">
