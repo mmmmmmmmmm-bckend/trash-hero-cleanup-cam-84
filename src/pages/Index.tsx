@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
@@ -97,11 +97,11 @@ const Index = () => {
   };
 
   // Get avatar source based on avatar_url using our helper function
-  const getAvatarSrc = () => {
+  const getUserAvatarSrc = () => {
     if (!userProfile?.avatar_url) return avatars[0]?.src || "https://i.pravatar.cc/150?img=5";
     
-    // Use the helper function from client.ts
-    return supabase.getAvatarSrc(userProfile.avatar_url);
+    // Use the imported getAvatarSrc helper function
+    return getAvatarSrc(userProfile.avatar_url);
   };
 
   const fetchLeaderboard = async () => {
@@ -120,8 +120,8 @@ const Index = () => {
       
       // Format for leaderboard
       const formattedLeaders = data.map((user, index) => {
-        // Use the helper function to get consistent avatar URLs
-        const avatarSrc = supabase.getAvatarSrc(user.avatar_url);
+        // Use the imported getAvatarSrc helper function
+        const avatarSrc = getAvatarSrc(user.avatar_url);
           
         return {
           id: user.id,
@@ -166,7 +166,7 @@ const Index = () => {
                   {userProfile ? (
                     <Avatar className="w-12 h-12">
                       <AvatarImage 
-                        src={getAvatarSrc()} 
+                        src={getUserAvatarSrc()} 
                         alt={userProfile.full_name || "User"} 
                       />
                       <AvatarFallback>

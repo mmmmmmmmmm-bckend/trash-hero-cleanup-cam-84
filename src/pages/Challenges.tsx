@@ -4,7 +4,7 @@ import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
 import LeaderboardCard from '../components/LeaderboardCard';
 import Header from '../components/Header';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { avatars } from '@/components/AvatarSelector';
@@ -155,8 +155,8 @@ const Challenges = () => {
   // Helper function to format leaderboard data
   const formatLeaderboardData = (data) => {
     return data.map((user, index) => {
-      // Use our helper function for consistent avatar URLs
-      const avatarSrc = supabase.getAvatarSrc(user.avatar_url);
+      // Use the imported getAvatarSrc helper function, not as a method on supabase
+      const avatarSrc = getAvatarSrc(user.avatar_url);
       
       return {
         id: user.id,
@@ -170,7 +170,8 @@ const Challenges = () => {
   
   // Get user avatar URL
   const getUserAvatarUrl = () => {
-    return supabase.getAvatarSrc(userAvatar);
+    // Use the imported getAvatarSrc helper function, not as a method on supabase
+    return getAvatarSrc(userAvatar);
   };
   
   return (
