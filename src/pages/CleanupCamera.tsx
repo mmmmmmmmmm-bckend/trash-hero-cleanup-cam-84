@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, Info, Video, Pause, Play, CircleCheck, Trash } from 'lucide-react';
@@ -15,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 // Simulated trash types data
 const trashTypes = [
@@ -111,11 +111,15 @@ const CleanupCamera = () => {
         stream.getTracks().forEach(track => track.stop());
       }
       
+      // Get device dimensions for optimal camera utilization
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
       const constraints = {
         video: { 
           facingMode: cameraFacing,
-          width: { ideal: 720 },
-          height: { ideal: 1280 }
+          width: { ideal: Math.max(width, 1280) },  // Use device width or higher
+          height: { ideal: Math.max(height, 720) }, // Use device height or higher
         }, 
         audio: false // Disable audio recording
       };
@@ -125,6 +129,13 @@ const CleanupCamera = () => {
       
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
+        
+        // Set video element dimensions to match stream
+        const videoTrack = newStream.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          console.log('Camera settings:', settings);
+        }
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -368,15 +379,17 @@ const CleanupCamera = () => {
       </div>
       
       {/* Camera/Video view */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative w-full h-full overflow-hidden">
         {!showPreview ? (
           <video 
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="h-full w-full object-cover"
-            style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
+            className="absolute inset-0 min-h-full min-w-full object-cover"
+            style={{ 
+              transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none',
+            }}
           />
         ) : (
           <video
@@ -384,7 +397,7 @@ const CleanupCamera = () => {
             controls
             autoPlay
             playsInline
-            className="h-full w-full object-contain bg-black"
+            className="absolute inset-0 min-h-full min-w-full object-contain bg-black"
           />
         )}
         
