@@ -9,3 +9,20 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Helper function to get the avatar source URL
+export const getAvatarSrc = (avatarUrl: string | null): string => {
+  if (!avatarUrl) return "https://i.pravatar.cc/150?img=5";
+  
+  // If it's already a URL, return it
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl;
+  }
+  
+  // Otherwise, get the URL from Supabase storage
+  const { data } = supabase.storage
+    .from('profiles')
+    .getPublicUrl(avatarUrl);
+    
+  return data?.publicUrl || "https://i.pravatar.cc/150?img=5";
+};
