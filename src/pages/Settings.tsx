@@ -12,7 +12,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import AvatarSelector, { avatars } from '@/components/AvatarSelector';
+import AvatarSelector from '@/components/AvatarSelector';
 import ProfileSection from '@/components/settings/ProfileSection';
 import PreferencesSection from '@/components/settings/PreferencesSection';
 import AccountSection from '@/components/settings/AccountSection';

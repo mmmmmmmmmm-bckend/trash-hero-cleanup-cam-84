@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { User, Award, Star, Clock, MapPin, Trash, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
 import PointsBadge from '../components/PointsBadge';
@@ -10,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import AvatarSelector, { avatars } from '@/components/AvatarSelector';
+import AvatarSelector from '@/components/AvatarSelector';
 
 const Profile = () => {
   const [headerCompact, setHeaderCompact] = useState(false);
@@ -194,7 +193,7 @@ const Profile = () => {
                   <div className="w-20 h-20 bg-white rounded-full overflow-hidden mb-3 cursor-pointer hover:opacity-90 transition-opacity">
                     <Avatar className="w-20 h-20">
                       <AvatarImage 
-                        src={avatars.find(a => a.id === profile?.avatar_url)?.src || avatars[0].src} 
+                        src={getAvatarSrc(profile?.avatar_url)} 
                         alt={profile?.full_name || 'User'} 
                       />
                       <AvatarFallback>{(profile?.full_name || 'User').substring(0, 2).toUpperCase()}</AvatarFallback>

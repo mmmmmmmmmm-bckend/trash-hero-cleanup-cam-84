@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { avatars } from '@/components/AvatarSelector';
+import AvatarSelector from '@/components/AvatarSelector';
 
 // Mock challenge data
 const activeChallenges = [

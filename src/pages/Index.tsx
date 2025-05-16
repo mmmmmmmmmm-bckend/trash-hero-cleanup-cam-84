@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, MapPin, Award, Star } from 'lucide-react';
@@ -177,7 +176,7 @@ const Index = () => {
                     </Avatar>
                   ) : (
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src={avatars[0]?.src || "https://i.pravatar.cc/150?img=5"} alt="User avatar" />
+                      <AvatarImage src="https://i.pravatar.cc/150?img=5" alt="User avatar" />
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                   )}

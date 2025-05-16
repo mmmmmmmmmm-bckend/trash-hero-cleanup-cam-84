@@ -4,8 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
-// We're removing the predefined avatars array completely
-
 interface AvatarSelectorProps {
   selectedAvatar: string;
   onSelectAvatar: (avatarId: string) => void;
