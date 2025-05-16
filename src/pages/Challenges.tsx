@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Award, Clock, Check, User, Users } from 'lucide-react';
 import NavBar from '../components/NavBar';
@@ -14,7 +15,7 @@ import { AchievementsDisplay } from '@/components/challenges/AchievementsDisplay
 
 const Challenges = () => {
   const [activeTab, setActiveTab] = useState('challenges'); // 'challenges' or 'leaderboard'
-  const [leaderboardType, setLeaderboardType] = useState<'global' | 'local'>('global'); // Explicitly type as union
+  const [leaderboardType, setLeaderboardType] = useState('global'); // 'global' or 'local'
   const [globalLeaders, setGlobalLeaders] = useState([]);
   const [localLeaders, setLocalLeaders] = useState([]);
   const [userRank, setUserRank] = useState({global: 0, local: 0});
@@ -218,7 +219,7 @@ const Challenges = () => {
             {/* Your rank */}
             <UserRankCard
               userRank={userRank}
-              leaderboardType={leaderboardType} // This will now be correctly typed
+              leaderboardType={leaderboardType}
               userPoints={userPoints}
               avatarUrl={getUserAvatarUrl()}
             />

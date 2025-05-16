@@ -14,17 +14,12 @@ export const UserRankCard: React.FC<UserRankCardProps> = ({
   userPoints,
   avatarUrl,
 }) => {
-  // Ensure leaderboardType is valid
-  const validType = leaderboardType === 'global' || leaderboardType === 'local' 
-    ? leaderboardType 
-    : 'global'; // Default to global if invalid
-    
   return (
     <div className="bg-card p-4 rounded-lg shadow-sm">
       <h3 className="font-medium text-sm text-muted-foreground mb-2">Your Rank</h3>
       <div className="flex items-center">
         <span className="font-bold text-lg w-8">
-          {validType === 'global' ? 
+          {leaderboardType === 'global' ? 
             (userRank.global || '?') : 
             (userRank.local || '?')}
         </span>
