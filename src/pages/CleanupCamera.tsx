@@ -1,628 +1,367 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, X, ArrowRight, ArrowLeft, Play, Pause } from 'lucide-react';
+import { Camera, RotateCw, X, Info, Image as ImageIcon, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import NavBar from '../components/NavBar';
-import Header from '../components/Header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-
-// Trash type definitions with their point values
-const TRASH_TYPES = {
-  "Plastic bottle": { points: 15, recyclingTime: "450 years", impact: "High" },
-  "Food wrapper": { points: 10, recyclingTime: "20-30 years", impact: "Medium" },
-  "Paper waste": { points: 5, recyclingTime: "2-6 weeks", impact: "Low" },
-  "Metal can": { points: 20, recyclingTime: "50-100 years", impact: "Medium" },
-  "Glass bottle": { points: 25, recyclingTime: "1 million+ years", impact: "Medium" },
-  "Cardboard": { points: 10, recyclingTime: "2 months", impact: "Low" }
-};
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const CleanupCamera = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasPhoto, setHasPhoto] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
+  const [trashWeight, setTrashWeight] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [location, setLocation] = useState('Unknown location');
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const detectionIntervalRef = useRef<number | null>(null);
-  
-  const [step, setStep] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const [videoData, setVideoData] = useState<string[]>([]);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
-  const [isCameraReady, setCameraReady] = useState(false);
-  const [aiPrediction, setAiPrediction] = useState<string | null>(null);
-  const [aiConfidence, setAiConfidence] = useState<number | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [showUI, setShowUI] = useState(true);
-  const [trashClassification, setTrashClassification] = useState<string | null>(null);
-  const [detections, setDetections] = useState<Array<{
-    type: string;
-    confidence: number;
-    box: {x: number, y: number, width: number, height: number};
-  }>>([]);
-  const [earnedPoints, setEarnedPoints] = useState(0);
-  
-  const steps = [
-    { title: "Show the trash", description: "First, show us the trash you've found" },
-    { title: "Pick it up", description: "Now pick up the trash" },
-    { title: "Proper disposal", description: "Finally, show putting it in a bin" }
-  ];
+  const [loading, setLoading] = useState(false);
 
-  // Handle tap to toggle UI visibility
-  const toggleUI = () => {
-    setShowUI(!showUI);
-  };
-
-  // Start the camera on component mount
   useEffect(() => {
-    startCamera();
-    return () => {
-      stopCamera();
-      stopObjectDetection();
-    };
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const { latitude, longitude } = position.coords;
+          fetchLocation(latitude, longitude);
+        },
+        error => {
+          console.error("Error getting location: ", error);
+        }
+      );
+    }
   }, []);
 
-  const startCamera = async () => {
+  const fetchLocation = async (latitude: number, longitude: number) => {
     try {
-      if (streamRef.current) {
-        stopCamera(); // Stop any existing streams first
-      }
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          // Request lower resolution for better performance
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        },
-        audio: false // Don't request audio permission until recording starts
-      });
-      
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraReady(true);
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      toast({
-        title: "Camera Error",
-        description: "Could not access your camera. Please check permissions.",
-        variant: "destructive",
-      });
+      // For demonstration, we'll just use coordinates. In a real app,
+      // you might use a geocoding service to get the address.
+      setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+    } catch (error) {
+      console.error('Error fetching location:', error);
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      const tracks = streamRef.current.getTracks();
-      tracks.forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  };
-
-  // Optimized object detection simulation with less frequent updates for better performance
-  const startObjectDetection = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-    }
+  useEffect(() => {
+    // Start camera when component mounts
+    startCamera();
     
-    const detectObjects = () => {
-      if (!canvasRef.current || !videoRef.current || !streamRef.current) return;
-      
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      // Set canvas to smaller dimensions for better performance
-      const aspectRatio = video.videoWidth / video.videoHeight;
-      const canvasWidth = Math.min(480, video.videoWidth);
-      const canvasHeight = canvasWidth / aspectRatio;
-      
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-      
-      // Draw the current video frame onto the canvas (scaled down)
-      ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-      
-      // Simulate AI detection - optimized to be less CPU intensive
-      if (Math.random() > 0.4) { // Reduce detection frequency
-        const trashTypes = Object.keys(TRASH_TYPES);
-        const randomTypeIndex = Math.floor(Math.random() * trashTypes.length);
-        const randomType = trashTypes[randomTypeIndex];
-        const randomConfidence = 75 + Math.floor(Math.random() * 20); // 75% to 95%
-        
-        // Simplified box calculation
-        const x = Math.floor(Math.random() * (canvas.width - 60));
-        const y = Math.floor(Math.random() * (canvas.height - 60));
-        const width = 40 + Math.floor(Math.random() * 60);
-        const height = 40 + Math.floor(Math.random() * 60);
-        
-        // Draw detection box with simpler style
-        ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
-        
-        // Simpler label drawing
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(x, y - 15, 100, 15);
-        ctx.font = '10px Arial';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(`${randomType} ${randomConfidence}%`, x + 2, y - 3);
-        
-        // Update state with just one detection at a time for better performance
-        setDetections([{
-          type: randomType,
-          confidence: randomConfidence,
-          box: {x, y, width, height}
-        }]);
-        
-        setAiPrediction(randomType);
-        setAiConfidence(randomConfidence);
-        setTrashClassification(JSON.stringify(TRASH_TYPES[randomType]));
+    // Clean up camera stream when component unmounts
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
     };
-    
-    // Reduced frequency for better performance (1 second interval)
-    detectionIntervalRef.current = setInterval(detectObjects, 1000) as unknown as number;
-  };
-
-  const stopObjectDetection = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-      detectionIntervalRef.current = null;
-    }
-  };
-
-  const startRecording = async () => {
-    if (!streamRef.current) {
-      await startCamera();
-    }
-    
-    if (streamRef.current) {
-      setIsRecording(true);
-      // Keep UI visible during recording - FIX for BUG #2
-      // setShowUI(false); // OLD behavior that caused the bug
-      
-      // Start object detection
-      startObjectDetection();
-      
-      // If we need audio for recording, request it now
-      let recordingStream: MediaStream;
-      
-      try {
-        // Add audio track only for recording
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const videoTracks = streamRef.current.getVideoTracks();
-        const audioTracks = audioStream.getAudioTracks();
-        
-        recordingStream = new MediaStream([...videoTracks, ...audioTracks]);
-      } catch (err) {
-        // Fall back to video-only if audio permission is denied
-        console.warn("Could not get audio permission, recording without audio", err);
-        recordingStream = streamRef.current;
+  }, [cameraFacing]);
+  
+  const startCamera = async () => {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
-
-      const recorder = new MediaRecorder(recordingStream);
-      const chunks: BlobPart[] = [];
-
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/mp4' });
-        const videoUrl = URL.createObjectURL(blob);
-        setVideoData(prev => [...prev, videoUrl]);
-        
-        // Stop audio tracks if they were added just for recording
-        if (recordingStream !== streamRef.current) {
-          recordingStream.getAudioTracks().forEach(track => track.stop());
-        }
-        
-        // Analyze the video frame (simulated AI detection)
-        simulateAIAnalysis();
+      
+      const constraints = {
+        video: { 
+          facingMode: cameraFacing,
+          width: { ideal: 720 },
+          height: { ideal: 1280 }
+        }, 
+        audio: false
       };
-
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-
-      // Start the timer
-      const interval = setInterval(() => {
-        setRecordingTime(prevTime => prevTime + 1);
-      }, 1000);
       
-      setTimerInterval(interval);
-
-      // Auto-stop recording after 10 seconds
-      setTimeout(() => {
-        if (recorder.state === "recording") {
-          stopRecording();
-        }
-      }, 10000);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStream(newStream);
       
-      // Stop object detection when recording stops
-      stopObjectDetection();
-      
-      // Clear the timer
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        setTimerInterval(null);
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
       }
-      setRecordingTime(0);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast({
+        title: "Camera Error",
+        description: "Could not access the camera. Please check permissions.",
+        variant: "destructive"
+      });
     }
   };
-
-  const togglePause = () => {
-    if (videoRef.current) {
-      if (isPaused) {
-        videoRef.current.play();
-      } else {
-        videoRef.current.pause();
-      }
-      setIsPaused(!isPaused);
-    }
+  
+  const switchCamera = () => {
+    setCameraFacing(prev => prev === 'environment' ? 'user' : 'environment');
   };
-
-  // Simulate AI trash detection and analysis
-  const simulateAIAnalysis = () => {
-    setIsAnalyzing(true);
+  
+  const takePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
     
-    setTimeout(() => {
-      // Simulate AI detection results based on step
-      const trashTypes = Object.keys(TRASH_TYPES);
-      const randomTypeIndex = Math.floor(Math.random() * trashTypes.length);
-      const randomType = trashTypes[randomTypeIndex];
-      const randomConfidence = 75 + Math.floor(Math.random() * 20); // 75% to 95%
-      
-      setAiPrediction(randomType);
-      setAiConfidence(randomConfidence);
-      
-      // Calculate points based on trash type
-      const pointsEarned = TRASH_TYPES[randomType].points;
-      setEarnedPoints(prev => prev + pointsEarned);
-      
-      // Classify trash type for environmental impact data
-      setTrashClassification(JSON.stringify(TRASH_TYPES[randomType]));
-      setIsAnalyzing(false);
-      
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Make the canvas the same size as the video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw the video frame onto the canvas
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    setHasPhoto(true);
+  };
+  
+  const clearPhoto = () => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasPhoto(false);
+  };
+  
+  const saveCleanup = async () => {
+    if (!user || !canvasRef.current || !hasPhoto) {
       toast({
-        title: "AI Analysis Complete",
-        description: `Detected: ${randomType} (${randomConfidence}% confidence) +${pointsEarned} points!`,
+        title: "Error",
+        description: "Please take a photo first",
+        variant: "destructive"
       });
-    }, 1000); // Reduced time from 2 seconds to 1 second
-  };
-
-  const nextStep = () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      // Submit all video data
-      submitCleanup();
-    }
-  };
-
-  const prevStep = () => {
-    if (step > 0) {
-      setStep(step - 1);
-      // Remove the last recorded video
-      setVideoData(videoData.slice(0, -1));
-      // Reset earned points proportionally
-      setEarnedPoints(Math.floor(earnedPoints * (step - 1) / step));
-      // Reset AI prediction for this step
-      setAiPrediction(null);
-      setAiConfidence(null);
-      setTrashClassification(null);
-    } else {
-      navigate('/');
-    }
-  };
-
-  const submitCleanup = async () => {
-    if (!user) {
-      toast({
-        title: "Not logged in",
-        description: "You need to be logged in to submit a cleanup.",
-        variant: "destructive",
-      });
-      navigate('/login');
       return;
     }
     
+    setLoading(true);
+    
     try {
-      // Upload video/evidence data would go here in a real implementation
-      // For now, just add a cleanup record with points based on trash type
-      const { data, error } = await supabase
-        .from('cleanups')
-        .insert([
-          { 
-            user_id: user.id,
-            location: 'Custom location', 
-            points: earnedPoints, // Use earned points based on trash type
-            verified: false,
-            trash_weight_kg: 0.5 // Estimated weight
-          }
-        ]);
-      
-      if (error) throw error;
-      
-      // Update user points
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('total_points')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profileError && profileData) {
-        const currentPoints = profileData.total_points || 0;
-        await supabase
-          .from('profiles')
-          .update({ total_points: currentPoints + earnedPoints })
-          .eq('id', user.id);
+      // Convert weight to number
+      const weightKg = parseFloat(trashWeight);
+      if (isNaN(weightKg)) {
+        throw new Error("Please enter a valid weight");
       }
       
-      toast({
-        title: "Cleanup Submitted",
-        description: `Your cleanup has been submitted. You earned ${earnedPoints} points!`,
+      // Calculate points (10 points per kg)
+      const points = Math.round(weightKg * 10);
+      
+      // Get image from canvas as blob
+      const canvas = canvasRef.current;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const blob = await (await fetch(dataUrl)).blob();
+      
+      // Upload image to Supabase Storage
+      const fileName = `cleanup-${Date.now()}.jpg`;
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from('cleanups')
+        .upload(fileName, blob);
+      
+      if (fileError) {
+        throw fileError;
+      }
+      
+      // Get public URL for the image
+      const { data: urlData } = supabase.storage
+        .from('cleanups')
+        .getPublicUrl(fileName);
+      
+      const imageUrl = urlData.publicUrl;
+      
+      // Insert cleanup record
+      const { data, error } = await supabase
+        .from('cleanups')
+        .insert([{
+          user_id: user.id,
+          location,
+          trash_weight_kg: weightKg,
+          points,
+          verified: false,
+          image_url: imageUrl
+        }]);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update user's total points
+      await supabase.rpc('increment_user_points', {
+        user_id: user.id,
+        points_to_add: points
       });
+      
+      // Show success dialog
+      setShowSuccess(true);
+      
     } catch (error: any) {
-      console.error("Error submitting cleanup:", error);
+      console.error('Error saving cleanup:', error);
       toast({
-        title: "Submission Failed",
-        description: error.message || "There was an error submitting your cleanup.",
-        variant: "destructive",
+        title: "Error",
+        description: error.message || "Could not save cleanup",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
-    
-    // Navigate back to home
-    navigate('/', { state: { justSubmitted: true } });
   };
-
-  // Format seconds to MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const secs = (seconds % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
+  
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    navigate('/');
   };
 
   return (
-    <div className="min-h-screen bg-black pb-16">
-      <Header title="Record Cleanup" showBack={true} />
-      
-      <div className="relative h-[calc(100vh-132px)]">
-        {/* Camera view - tap to toggle UI */}
-        <div 
-          className="relative h-full"
-          onClick={toggleUI}
+    <div className="min-h-screen relative flex flex-col bg-black">
+      {/* Top buttons for navigation and camera controls */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-center">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="rounded-full bg-black/50 text-white hover:bg-black/70"
+          onClick={() => navigate(-1)}
         >
-          <video 
-            ref={videoRef}
-            autoPlay 
-            playsInline 
-            muted
-            className="w-full h-full object-cover"
-          />
+          <X className="h-5 w-5" />
+        </Button>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full bg-black/50 text-white hover:bg-black/70"
+            onClick={() => setShowInfo(true)}
+          >
+            <Info className="h-5 w-5" />
+          </Button>
           
-          {/* Canvas for object detection */}
-          <canvas 
-            ref={canvasRef} 
-            className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
-          />
-          
-          {!isCameraReady && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-              <div className="text-center text-white">
-                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p>Setting up camera...</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Always show UI during recording (fix for bug #2) */}
-          {showUI && (
-            <>
-              {/* Recording indicator */}
-              {isRecording && (
-                <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 px-3 py-1 rounded-full">
-                  <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                  <span className="text-white text-sm font-medium">{formatTime(recordingTime)}</span>
-                </div>
-              )}
-              
-              {/* Points indicator */}
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 px-3 py-1 rounded-full">
-                <span className="text-white text-sm font-medium">Step {step + 1}/{steps.length}</span>
-                {earnedPoints > 0 && (
-                  <span className="text-white text-sm font-medium ml-2">Points: {earnedPoints}</span>
-                )}
-              </div>
-              
-              {/* Instructions */}
-              <div className="absolute bottom-32 left-0 right-0 px-4">
-                <div className="bg-black/60 backdrop-blur-sm text-white p-4 rounded-xl max-w-md mx-auto">
-                  <h3 className="text-xl font-bold mb-1">{steps[step].title}</h3>
-                  <p>{steps[step].description}</p>
-                </div>
-              </div>
-              
-              {/* AI Analysis Results */}
-              {aiPrediction && !isAnalyzing && !isRecording && (
-                <div className="absolute top-16 right-4 max-w-[150px] bg-black/70 backdrop-blur-sm rounded-lg p-2 text-white text-xs">
-                  <h4 className="font-bold mb-1">AI Detection</h4>
-                  <p className="mb-1">Item: {aiPrediction}</p>
-                  <div className="h-1 w-full bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full" 
-                      style={{ width: `${aiConfidence}%` }}
-                    ></div>
-                  </div>
-                  <p className="mt-1">{aiConfidence}% confidence</p>
-                  {trashClassification && (
-                    <p className="mt-1">Points: +{JSON.parse(trashClassification).points}</p>
-                  )}
-                </div>
-              )}
-              
-              {isAnalyzing && (
-                <div className="absolute top-16 right-4 max-w-[150px] bg-black/70 backdrop-blur-sm rounded-lg p-2 text-white text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>AI analyzing...</span>
-                  </div>
-                </div>
-              )}
-              
-              {/* Preview of recorded video */}
-              {videoData[step] && !isRecording && (
-                <div className="absolute bottom-28 right-4 w-24 h-32 rounded-lg overflow-hidden border-2 border-white">
-                  <video 
-                    src={videoData[step]} 
-                    className="w-full h-full object-cover" 
-                    autoPlay 
-                    loop 
-                    muted
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePause();
-                    }}
-                    className="absolute bottom-1 right-1 bg-black/50 rounded-full p-1"
-                  >
-                    {isPaused ? <Play className="w-4 h-4 text-white" /> : <Pause className="w-4 h-4 text-white" />}
-                  </button>
-                </div>
-              )}
-              
-              {/* Trash info sheet/drawer (uses Sheet on desktop, Drawer on mobile) */}
-              {trashClassification && !isRecording && (
-                <div className="absolute bottom-32 left-4">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="bg-primary text-white px-3 py-1 rounded-full text-xs font-medium"
-                      >
-                        View Environmental Impact
-                      </button>
-                    </SheetTrigger>
-                    <SheetContent>
-                      <SheetHeader>
-                        <SheetTitle>Environmental Impact</SheetTitle>
-                        <SheetDescription>
-                          AI-detected trash analysis
-                        </SheetDescription>
-                      </SheetHeader>
-                      <div className="mt-4">
-                        <h3 className="font-bold mb-2">Detected: {aiPrediction}</h3>
-                        {trashClassification && (
-                          <div className="space-y-2">
-                            {Object.entries(JSON.parse(trashClassification)).map(([key, value]) => (
-                              <div key={key}>
-                                <span className="font-medium">{key}: </span>
-                                <span>{value as string}</span>
-                              </div>
-                            ))}
-                            <p className="pt-4 text-sm text-gray-500">
-                              By removing this trash, you're helping prevent pollution and protecting wildlife.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
-              )}
-              
-              {/* Controls */}
-              <div className="absolute bottom-16 left-0 right-0 px-4">
-                <div className="flex justify-center items-center gap-4">
-                  {!isRecording ? (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startRecording();
-                      }}
-                      className="bg-red-500 text-white p-4 rounded-full"
-                      disabled={!isCameraReady}
-                    >
-                      <Video className="w-8 h-8" />
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        stopRecording();
-                      }}
-                      className="bg-red-500 text-white p-4 rounded-full animate-pulse"
-                    >
-                      <X className="w-8 h-8" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Navigation */}
-              <div className="absolute bottom-4 left-0 right-0 px-4">
-                <div className="flex justify-between">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      prevStep();
-                    }}
-                    className="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </button>
-                  
-                  {videoData[step] && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        nextStep();
-                      }}
-                      className="bg-primary text-white px-4 py-2 rounded-full flex items-center gap-1"
-                    >
-                      {step === steps.length - 1 ? 'Submit' : 'Next'}
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full bg-black/50 text-white hover:bg-black/70"
+            onClick={switchCamera}
+          >
+            <RotateCw className="h-5 w-5" />
+          </Button>
         </div>
       </div>
       
-      {/* Only show NavBar when not recording AND when UI is shown */}
-      {!isRecording && showUI && <NavBar />}
+      {/* Camera view */}
+      <div className="flex-1 relative overflow-hidden">
+        <video 
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className={`h-full w-full object-cover ${hasPhoto ? 'hidden' : 'block'}`}
+          style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
+        />
+        <canvas 
+          ref={canvasRef}
+          className={`h-full w-full object-contain bg-black ${hasPhoto ? 'block' : 'hidden'}`}
+          style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
+        />
+      </div>
+      
+      {/* Bottom controls */}
+      {!hasPhoto ? (
+        <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 flex justify-center">
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="rounded-full w-16 h-16 p-0 border-4 border-white text-white hover:bg-white/20"
+            onClick={takePhoto}
+          >
+            <Camera className="h-8 w-8" />
+          </Button>
+        </div>
+      ) : (
+        <div className="p-6 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-full">
+              <Trash className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1">
+              <Input
+                type="number"
+                placeholder="Weight (kg)"
+                className="bg-white/10 border-0 text-white placeholder-white/60"
+                value={trashWeight}
+                onChange={(e) => setTrashWeight(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <div className="flex gap-3 justify-center">
+            <Button 
+              variant="outline" 
+              className="rounded-full flex-1 text-white border-white hover:bg-white/20"
+              onClick={clearPhoto}
+            >
+              Retake
+            </Button>
+            <Button 
+              className="rounded-full flex-1"
+              onClick={saveCleanup}
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Info dialog */}
+      <Dialog open={showInfo} onOpenChange={setShowInfo}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>How to record a cleanup</DialogTitle>
+            <DialogDescription className="space-y-4 pt-4">
+              <p>
+                1. Take a photo of the trash you've collected
+              </p>
+              <p>
+                2. Enter the approximate weight in kilograms
+              </p>
+              <p>
+                3. Submit your cleanup to earn points
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Your location is automatically recorded. Points are awarded based on the weight of trash collected.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Success dialog */}
+      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cleanup Recorded!</DialogTitle>
+            <DialogDescription className="space-y-4 pt-4">
+              <div className="bg-primary/10 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+                <ImageIcon className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-center">
+                Thank you for your contribution! Your cleanup has been recorded.
+              </p>
+              {parseFloat(trashWeight) > 0 && (
+                <p className="text-center font-bold">
+                  You earned {Math.round(parseFloat(trashWeight) * 10)} points!
+                </p>
+              )}
+              <Button className="w-full" onClick={handleSuccessClose}>
+                Back to Home
+              </Button>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,17 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, Award, Star } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NavBar from '../components/NavBar';
 import Header from '../components/Header';
 import LeaderboardCard from '../components/LeaderboardCard';
-import PointsBadge from '../components/PointsBadge';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import AppTutorial from '@/components/AppTutorial';
 import FeatureGuide from '@/components/FeatureGuide';
+import UserHeader from '@/components/home/UserHeader';
+import ActionButtons from '@/components/home/ActionButtons';
+import UserStats from '@/components/home/UserStats';
+import UserChallenge from '@/components/home/UserChallenge';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -148,41 +151,11 @@ const Index = () => {
         {/* User points summary - now part of the same gradient container */}
         <div className="p-6">
           <div className="max-w-md mx-auto">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm opacity-90">Your impact</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">{userPoints}</span>
-                  <Star className="w-5 h-5" />
-                  <span className="text-sm opacity-90">points</span>
-                </div>
-                {userProfile && (
-                  <p className="text-sm mt-1 opacity-90">
-                    {userProfile.full_name || userProfile.username || "User"}
-                  </p>
-                )}
-              </div>
-              <div className="bg-white/20 p-2 rounded-full">
-                <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                  {userProfile ? (
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage 
-                        src={getUserAvatarSrc()} 
-                        alt={userProfile.full_name || "User"} 
-                      />
-                      <AvatarFallback>
-                        {(userProfile.full_name || userProfile.username || "U").substring(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src="https://i.pravatar.cc/150?img=5" alt="User avatar" />
-                      <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-              </div>
-            </div>
+            <UserHeader
+              points={userPoints}
+              profile={userProfile}
+              avatarSrc={getUserAvatarSrc()}
+            />
           </div>
         </div>
       </div>
@@ -217,33 +190,7 @@ const Index = () => {
             </button>
 
             {/* Secondary actions */}
-            <div className="grid grid-cols-3 gap-4">
-              <button 
-                onClick={() => navigate('/points')}
-                className="hero-button-secondary flex-col py-4"
-              >
-                <Star className="w-6 h-6 mb-1" />
-                <span className="text-sm">My Points</span>
-              </button>
-              
-              <button 
-                onClick={() => {
-                  navigate('/map');
-                }}
-                className="hero-button-secondary flex-col py-4"
-              >
-                <MapPin className="w-6 h-6 mb-1" />
-                <span className="text-sm">Nearby Bins</span>
-              </button>
-              
-              <button 
-                onClick={() => navigate('/challenges')}
-                className="hero-button-secondary flex-col py-4"
-              >
-                <Award className="w-6 h-6 mb-1" />
-                <span className="text-sm">Challenges</span>
-              </button>
-            </div>
+            <ActionButtons />
 
             {/* Help buttons */}
             <div className="flex justify-center gap-2">
@@ -266,49 +213,10 @@ const Index = () => {
             </div>
 
             {/* Stats summary */}
-            <div className="hero-card">
-              <h2 className="text-lg font-bold mb-3">Your Impact</h2>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-primary">{userStats.cleanups}</p>
-                  <p className="text-xs text-muted-foreground">Cleanups</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-primary">{userStats.collected}</p>
-                  <p className="text-xs text-muted-foreground">kg Collected</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-primary">{userStats.badges}</p>
-                  <p className="text-xs text-muted-foreground">Badges</p>
-                </div>
-              </div>
-            </div>
+            <UserStats stats={userStats} />
 
             {/* Active challenges */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-bold">Active Challenge</h2>
-                <button 
-                  onClick={() => navigate('/challenges')}
-                  className="text-accent dark:text-accent text-sm"
-                >
-                  View All
-                </button>
-              </div>
-              <div className="hero-card">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Weekend Warrior</h3>
-                  <PointsBadge points={250} size="small" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Complete 3 cleanups this weekend
-                </p>
-                <div className="w-full bg-gray-200 dark:bg-muted rounded-full h-2.5 mb-1">
-                  <div className="bg-accent dark:bg-accent h-2.5 rounded-full" style={{ width: '66%' }}></div>
-                </div>
-                <p className="text-xs text-right text-muted-foreground">2/3 completed</p>
-              </div>
-            </div>
+            <UserChallenge onViewAll={() => navigate('/challenges')} />
 
             {/* Leaderboard */}
             <div className="space-y-2">

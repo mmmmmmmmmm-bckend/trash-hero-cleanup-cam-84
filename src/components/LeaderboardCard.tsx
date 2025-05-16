@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase, getAvatarSrc } from '@/integrations/supabase/client';
 
@@ -57,7 +56,6 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
         
         if (data && data.length > 0) {
           const leaderboardData = data.map((user, index) => {
-            // Use the helper function for consistent avatar URLs
             const avatarSrc = getAvatarSrc(user.avatar_url);
               
             return {
