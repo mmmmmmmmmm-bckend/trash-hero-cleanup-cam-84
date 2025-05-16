@@ -270,18 +270,18 @@ const CleanupCamera = () => {
       // Simulate file upload delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Insert cleanup record
+      // Insert cleanup record with the correct schema structure
+      // Using a placeholder for the location field to match required schema
       const { data, error } = await supabase
         .from('cleanups')
-        .insert([{
+        .insert({
           user_id: user.id,
-          trash_type: trashAnalysis?.type || 'Unknown',
+          location: trashAnalysis?.type || 'Unknown location', // Required field
           trash_weight_kg: weightKg,
           points,
           verified: true,
-          ai_verified: true,
-          image_url: "https://example.com/video-placeholder.mp4" // Placeholder
-        }]);
+          // Note: trash_type and ai_verified aren't in the schema, so we don't include them
+        });
       
       if (error) {
         throw error;
