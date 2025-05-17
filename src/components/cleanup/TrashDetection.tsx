@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 
@@ -89,6 +88,27 @@ export const TrashDetection: React.FC<TrashDetectionProps> = ({
   const [detectionProgress, setDetectionProgress] = useState(0);
   const [detectionMessage, setDetectionMessage] = useState('');
   const [boundingBoxes, setBoundingBoxes] = useState<{x: number, y: number, width: number, height: number, label: string}[]>([]);
+
+  // Listen for custom detection events
+  useEffect(() => {
+    const handleVerification = () => {
+      if (step === 'disposing') {
+        // Update UI for verification
+        setDetectionMessage('Verification complete! Trash properly disposed.');
+        setDetectionProgress(100);
+        // Clear any existing interval
+        if (detectionIntervalRef.current) {
+          clearInterval(detectionIntervalRef.current);
+          detectionIntervalRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener('trash-verified', handleVerification);
+    return () => {
+      document.removeEventListener('trash-verified', handleVerification);
+    };
+  }, [step]);
 
   useEffect(() => {
     // Clean up detection interval when component unmounts
@@ -199,9 +219,16 @@ export const TrashDetection: React.FC<TrashDetectionProps> = ({
             
             setDetectionMessage(`Detected: ${matchedTrashType?.type || "Unknown"}`);
             clearInterval(detectionIntervalRef.current!);
-          } else {
-            setDetectionMessage('Verification complete! Trash properly disposed.');
-            clearInterval(detectionIntervalRef.current!);
+          } else if (step === 'disposing') {
+            // Step 2 needs a bit more time before verification
+            if (window._trashDetectionStatus === 'verified') {
+              setDetectionMessage('Verification complete! Trash properly disposed.');
+              clearInterval(detectionIntervalRef.current!);
+            } else {
+              // Keep checking until verified
+              setDetectionMessage('Verifying proper disposal...');
+              return 95; // Keep at 95% until verified
+            }
           }
         }
         

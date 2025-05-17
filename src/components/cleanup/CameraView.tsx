@@ -11,6 +11,7 @@ interface CameraViewProps {
   isRecording: boolean;
   onSwitchCamera: () => void;
   onShowInfo: () => void;
+  onNavigateBack: () => void; // New prop for handling back navigation
   children: React.ReactNode;
 }
 
@@ -21,6 +22,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   isRecording,
   onSwitchCamera,
   onShowInfo,
+  onNavigateBack, // New prop for handling back navigation
   children
 }) => {
   const navigate = useNavigate();
@@ -43,6 +45,12 @@ export const CameraView: React.FC<CameraViewProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+  // Function to handle back navigation
+  const handleBackNavigation = () => {
+    onNavigateBack(); // Call the parent's cleanup function
+    navigate(-1);
+  };
+
   return (
     <div className="relative flex-1 w-full h-full overflow-hidden">
       {/* Top navigation */}
@@ -51,7 +59,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
           variant="ghost" 
           size="icon" 
           className="rounded-full bg-black/50 text-white hover:bg-black/70"
-          onClick={() => navigate(-1)}
+          onClick={handleBackNavigation}
         >
           <X className="h-5 w-5" />
         </Button>

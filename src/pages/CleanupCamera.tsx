@@ -19,6 +19,7 @@ import VideoPreview from '@/components/cleanup/VideoPreview';
 import WeightInput from '@/components/cleanup/WeightInput';
 
 const CleanupCamera = () => {
+  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -48,6 +49,7 @@ const CleanupCamera = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   
   useEffect(() => {
     // Start camera when component mounts
@@ -55,18 +57,18 @@ const CleanupCamera = () => {
     
     // Clean up resources when component unmounts
     return () => {
-      stopRecording();
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      cleanupResources();
     };
   }, [cameraFacing]);
   
   const startCamera = async () => {
     try {
+      console.log('Starting camera...');
+      setCameraError(null);
+      
       // Stop any existing stream
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        cleanupMediaStream();
       }
       
       // Get device dimensions for optimal camera utilization
@@ -99,6 +101,7 @@ const CleanupCamera = () => {
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
+      setCameraError('Could not access the camera. Please check permissions.');
       toast({
         title: "Camera Error",
         description: "Could not access the camera. Please check permissions.",
@@ -114,6 +117,11 @@ const CleanupCamera = () => {
   const startRecording = () => {
     if (!videoRef.current || !stream) {
       console.error('Video reference or stream is not available');
+      toast({
+        title: "Recording Error",
+        description: "Could not start recording. Camera not ready.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -121,9 +129,27 @@ const CleanupCamera = () => {
     recordedChunksRef.current = [];
     
     try {
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9'
-      });
+      // Check if MediaRecorder is supported
+      if (!window.MediaRecorder) {
+        throw new Error("MediaRecorder API is not supported in this browser");
+      }
+      
+      // Check for active video tracks
+      const videoTracks = stream.getVideoTracks();
+      if (!videoTracks || videoTracks.length === 0 || !videoTracks[0].enabled) {
+        throw new Error("No active video stream available");
+      }
+      
+      // Try with default options first
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream);
+      } catch (e) {
+        // Fallback to common codecs if default fails
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'video/webm;codecs=vp8'
+        });
+      }
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -133,10 +159,29 @@ const CleanupCamera = () => {
       
       mediaRecorder.onstop = () => {
         console.log('Recording stopped, processing video...');
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        const videoURL = URL.createObjectURL(blob);
-        setRecordedVideo(videoURL);
-        setShowPreview(true);
+        if (recordedChunksRef.current.length > 0) {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const videoURL = URL.createObjectURL(blob);
+          setRecordedVideo(videoURL);
+          setShowPreview(true);
+        } else {
+          console.error('No recorded data available');
+          toast({
+            title: "Recording Error",
+            description: "No data was recorded. Please try again.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        toast({
+          title: "Recording Error",
+          description: "An error occurred during recording.",
+          variant: "destructive"
+        });
+        setIsRecording(false);
       };
       
       mediaRecorderRef.current = mediaRecorder;
@@ -149,7 +194,7 @@ const CleanupCamera = () => {
       console.error('Error starting recording:', error);
       toast({
         title: "Recording Error",
-        description: "Could not start recording. Please try again.",
+        description: error instanceof Error ? error.message : "Could not start recording. Please try again.",
         variant: "destructive"
       });
     }
@@ -158,7 +203,11 @@ const CleanupCamera = () => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       console.log('Stopping recording...');
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+      }
       setIsRecording(false);
     }
   };
@@ -175,6 +224,36 @@ const CleanupCamera = () => {
       startCamera();
     } else {
       console.log('Camera stream is still active');
+      
+      // Make sure video element is properly connected to stream
+      if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+      }
+    }
+  };
+
+  // Clean up media stream
+  const cleanupMediaStream = () => {
+    if (stream) {
+      console.log('Stopping all media tracks...');
+      stream.getTracks().forEach(track => {
+        console.log(`Stopping track: ${track.kind}`);
+        track.stop();
+      });
+    }
+  };
+  
+  // Clean up all resources
+  const cleanupResources = () => {
+    console.log('Cleaning up all camera resources...');
+    stopRecording();
+    cleanupMediaStream();
+    setStream(null);
+    
+    // Clear any object URLs to prevent memory leaks
+    if (recordedVideo) {
+      URL.revokeObjectURL(recordedVideo);
+      setRecordedVideo(null);
     }
   };
   
@@ -271,8 +350,29 @@ const CleanupCamera = () => {
     navigate('/');
   };
 
+  const handleNavigateBack = () => {
+    // Clean up all resources when navigating away
+    cleanupResources();
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-black">
+      {/* Camera error display */}
+      {cameraError && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 bg-black p-4">
+          <div className="bg-red-500/20 rounded-lg p-4 max-w-md text-center">
+            <p className="text-white mb-4">{cameraError}</p>
+            <Button 
+              variant="outline" 
+              className="text-white border-white"
+              onClick={() => startCamera()}
+            >
+              Retry Camera Access
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Step indicator */}
       <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
         <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm">
@@ -289,6 +389,7 @@ const CleanupCamera = () => {
             isRecording={isRecording}
             onSwitchCamera={switchCamera}
             onShowInfo={() => setShowInfo(true)}
+            onNavigateBack={handleNavigateBack}
           >
             <TrashDetection
               videoRef={videoRef}
@@ -307,7 +408,7 @@ const CleanupCamera = () => {
                 size="lg" 
                 className="rounded-full w-16 h-16 p-0"
                 onClick={isRecording ? stopRecording : startRecording}
-                disabled={loading}
+                disabled={loading || !stream}
               >
                 {isRecording ? <Pause className="h-8 w-8" /> : <Video className="h-8 w-8" />}
               </Button>

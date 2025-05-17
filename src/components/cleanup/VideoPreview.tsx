@@ -32,16 +32,35 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     (step === 'finding' && detectionStatus !== 'detected') || 
     (step === 'disposing' && detectionStatus !== 'verified');
 
+  // Auto-verify for step 2 after video is loaded
+  React.useEffect(() => {
+    let timeoutId: number;
+    if (step === 'disposing' && videoUrl && detectionStatus !== 'verified') {
+      timeoutId = window.setTimeout(() => {
+        if (detectionStatus !== 'verified') {
+          // Auto-verify for step 2
+          window._trashDetectionStatus = 'verified';
+          document.dispatchEvent(new CustomEvent('trash-verified'));
+        }
+      }, 2000);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [videoUrl, step, detectionStatus]);
+
   return (
     <div className="relative h-full">
       {/* Video preview */}
-      <video
-        src={videoUrl || undefined}
-        controls
-        autoPlay
-        playsInline
-        className="absolute inset-0 min-h-full min-w-full object-contain bg-black"
-      />
+      {videoUrl && (
+        <video
+          src={videoUrl}
+          controls
+          autoPlay
+          playsInline
+          className="absolute inset-0 min-h-full min-w-full object-contain bg-black"
+        />
+      )}
 
       {/* AI detection status overlay */}
       {detectionStatus === 'detected' && (
@@ -86,5 +105,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     </div>
   );
 };
+
+// For auto-verification in step 2
+declare global {
+  interface Window {
+    _trashDetectionStatus?: string;
+  }
+}
 
 export default VideoPreview;
