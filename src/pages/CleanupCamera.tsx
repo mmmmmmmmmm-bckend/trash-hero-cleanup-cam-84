@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, Pause, Play, CircleCheck } from 'lucide-react';
@@ -382,6 +381,29 @@ const CleanupCamera = () => {
     cleanupResources();
   };
 
+  // Get camera step info
+  const getCameraStepInfo = () => {
+    if (step === 'finding') {
+      return {
+        stepNumber: 1,
+        totalSteps: 3,
+        title: "Show the trash",
+        description: "First, show us the trash you've found",
+        actionLabel: "Next"
+      };
+    } else {
+      return {
+        stepNumber: 3,
+        totalSteps: 3,
+        title: "Proper disposal",
+        description: "Finally, show putting it in a bin",
+        actionLabel: "Submit"
+      };
+    }
+  };
+
+  const stepInfo = getCameraStepInfo();
+
   return (
     <div className="min-h-screen flex flex-col bg-black">
       {/* Camera error display */}
@@ -399,7 +421,7 @@ const CleanupCamera = () => {
           </div>
         </div>
       )}
-
+      
       {/* Step indicator */}
       <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
         <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm">
@@ -417,6 +439,11 @@ const CleanupCamera = () => {
             onSwitchCamera={switchCamera}
             onShowInfo={() => setShowInfo(true)}
             onNavigateBack={handleNavigateBack}
+            step={stepInfo.stepNumber}
+            totalSteps={stepInfo.totalSteps}
+            title={stepInfo.title}
+            description={stepInfo.description}
+            actionLabel={stepInfo.actionLabel}
           >
             <TrashDetection
               videoRef={videoRef}

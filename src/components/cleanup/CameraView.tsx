@@ -11,8 +11,13 @@ interface CameraViewProps {
   isRecording: boolean;
   onSwitchCamera: () => void;
   onShowInfo: () => void;
-  onNavigateBack: () => void; // New prop for handling back navigation
+  onNavigateBack: () => void;
   children: React.ReactNode;
+  step: number;
+  totalSteps: number;
+  title: string;
+  description: string;
+  actionLabel: string;
 }
 
 export const CameraView: React.FC<CameraViewProps> = ({
@@ -22,8 +27,13 @@ export const CameraView: React.FC<CameraViewProps> = ({
   isRecording,
   onSwitchCamera,
   onShowInfo,
-  onNavigateBack, // New prop for handling back navigation
-  children
+  onNavigateBack,
+  children,
+  step,
+  totalSteps,
+  title,
+  description,
+  actionLabel
 }) => {
   const navigate = useNavigate();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -52,37 +62,32 @@ export const CameraView: React.FC<CameraViewProps> = ({
   };
 
   return (
-    <div className="relative flex-1 w-full h-full overflow-hidden">
-      {/* Top navigation */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-center">
+    <div className="relative flex-1 w-full h-full overflow-hidden bg-black">
+      {/* Top header bar */}
+      <div className="absolute top-0 left-0 right-0 z-10 bg-primary-dark text-white p-4 flex items-center">
         <Button 
           variant="ghost" 
           size="icon" 
-          className="rounded-full bg-black/50 text-white hover:bg-black/70"
+          className="text-white hover:bg-primary-dark/50"
           onClick={handleBackNavigation}
         >
           <X className="h-5 w-5" />
         </Button>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full bg-black/50 text-white hover:bg-black/70"
-            onClick={onShowInfo}
-          >
-            <Info className="h-5 w-5" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full bg-black/50 text-white hover:bg-black/70"
-            onClick={onSwitchCamera}
-            disabled={isRecording}
-          >
-            <Camera className="h-5 w-5" />
-          </Button>
+        <h1 className="text-xl font-bold flex-1 text-center">Record Cleanup</h1>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-white hover:bg-primary-dark/50"
+          onClick={onShowInfo}
+        >
+          <Info className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Step indicator */}
+      <div className="absolute top-16 left-4 z-10">
+        <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+          Step {step}/{totalSteps}
         </div>
       </div>
 
@@ -105,6 +110,46 @@ export const CameraView: React.FC<CameraViewProps> = ({
           <span className="text-white text-xs">Recording</span>
         </div>
       )}
+
+      {/* Instruction overlay */}
+      <div className="absolute bottom-32 left-0 right-0 px-4">
+        <div className="bg-black/70 p-4 rounded-lg text-white">
+          <h2 className="text-xl font-semibold mb-2">{title}</h2>
+          <p className="text-sm">{description}</p>
+        </div>
+      </div>
+
+      {/* Bottom controls */}
+      <div className="absolute bottom-24 left-0 right-0 flex justify-center">
+        <div className="bg-red-500 rounded-full p-3 shadow-lg">
+          <button 
+            className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center border-2 border-white"
+            disabled={isRecording}
+          >
+            <div className={isRecording ? "w-6 h-6 bg-white rounded-sm" : "w-10 h-10 bg-white rounded-sm"} />
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="absolute bottom-6 left-4 right-4 flex justify-between">
+        <Button
+          variant="ghost"
+          size="lg"
+          className="bg-black/50 text-white rounded-full w-12 h-12 flex items-center justify-center"
+          onClick={handleBackNavigation}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+        
+        <Button
+          variant="default"
+          size="lg"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6"
+        >
+          {actionLabel} →
+        </Button>
+      </div>
 
       {/* Additional components passed as children */}
       {children}
