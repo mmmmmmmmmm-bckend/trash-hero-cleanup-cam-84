@@ -18,6 +18,8 @@ interface CameraViewProps {
   title: string;
   description: string;
   actionLabel: string;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
 }
 
 export const CameraView: React.FC<CameraViewProps> = ({
@@ -33,7 +35,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
   totalSteps,
   title,
   description,
-  actionLabel
+  actionLabel,
+  onStartRecording,
+  onStopRecording
 }) => {
   const navigate = useNavigate();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -84,10 +88,17 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </Button>
       </div>
 
-      {/* Step indicator */}
-      <div className="absolute top-16 left-4 z-10">
-        <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+      {/* Step indicators */}
+      <div className="absolute top-16 left-4 z-10 flex items-center gap-2">
+        <div className="bg-black/70 text-white px-3 py-1.5 rounded-full text-sm">
           Step {step}/{totalSteps}
+        </div>
+      </div>
+      
+      {/* Step description */}
+      <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
+        <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm">
+          {step === 1 ? 'Step 1: Record Finding Trash' : 'Step 2: Record Disposal in Bin'}
         </div>
       </div>
 
@@ -119,16 +130,14 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom controls */}
+      {/* Recording button */}
       <div className="absolute bottom-24 left-0 right-0 flex justify-center">
-        <div className="bg-red-500 rounded-full p-3 shadow-lg">
-          <button 
-            className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center border-2 border-white"
-            disabled={isRecording}
-          >
-            <div className={isRecording ? "w-6 h-6 bg-white rounded-sm" : "w-10 h-10 bg-white rounded-sm"} />
-          </button>
-        </div>
+        <button 
+          className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
+          onClick={isRecording ? onStopRecording : onStartRecording}
+        >
+          <div className={isRecording ? "w-8 h-8 bg-white rounded-sm" : "w-14 h-14 bg-white rounded-full"}></div>
+        </button>
       </div>
 
       {/* Navigation buttons */}
