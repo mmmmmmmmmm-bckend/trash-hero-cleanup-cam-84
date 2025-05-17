@@ -163,7 +163,29 @@ const CleanupCamera = () => {
           const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
           const videoURL = URL.createObjectURL(blob);
           setRecordedVideo(videoURL);
-          setShowPreview(true);
+          
+          // If this is the first recording (finding trash), automatically move to the next step
+          // instead of showing the preview
+          if (step === 'finding' && detectionStatus === 'detected') {
+            console.log('Trash detected, automatically moving to disposal step');
+            setStep('disposing');
+            setShowPreview(false);
+            setDetectionStatus('none');
+            
+            // Show toast notification about successful detection
+            toast({
+              title: "Trash Detected",
+              description: trashAnalysis ? `${trashAnalysis.type} detected. Now record disposal.` : "Trash detected. Now record disposal.",
+            });
+            
+            // Brief delay before starting the next recording
+            setTimeout(() => {
+              resetCamera();
+            }, 300);
+          } else {
+            // For the second step (disposal) we show the preview for weight input
+            setShowPreview(true);
+          }
         } else {
           console.error('No recorded data available');
           toast({
@@ -266,6 +288,11 @@ const CleanupCamera = () => {
       recycling
     });
     setDetectionStatus('detected');
+    
+    // Automatically stop recording after detection is complete
+    if (isRecording) {
+      stopRecording();
+    }
   };
   
   const nextStep = () => {
